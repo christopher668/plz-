@@ -12,6 +12,12 @@
     nav a:first-child { font-weight:bold; font-size:1.2em; }
     .container { max-width:600px; margin:80px auto 0 auto; background:#fff; padding:32px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
     h1 { text-align:center; color:#333; }
+    /* Dark mode styles */
+    body.dark-mode { background: #181a1b !important; color: #e0e0e0 !important; }
+    body.dark-mode nav { background: #111 !important; }
+    body.dark-mode .container { background: #23272a !important; color: #e0e0e0 !important; box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important; }
+    body.dark-mode input, body.dark-mode textarea { background: #222 !important; color: #e0e0e0 !important; border-color: #444 !important; }
+    body.dark-mode button, body.dark-mode [type='submit'] { background: #222 !important; color: #fff !important; border-color: #444 !important; }
   </style>
 </head>
 <body>
@@ -20,11 +26,146 @@
       <a href="/index.html">Dashboard</a>
       <a href="/schedule.html">Schedule</a>
       <a href="/profile.html">Profile</a>
+      <button id="settings-btn" style="margin-left:auto; background:none; border:none; color:#fff; font-size:1.1em; cursor:pointer;">⚙️ Settings</button>
     </div>
   </nav>
+  <div id="settings-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.3); z-index:1000; align-items:center; justify-content:center;">
+    <div style="background:#fff; color:#222; padding:32px; border-radius:8px; min-width:300px; max-width:90vw; box-shadow:0 2px 16px rgba(0,0,0,0.2); position:relative;">
+      <button id="close-settings" style="position:absolute; top:8px; right:12px; background:none; border:none; font-size:1.3em; cursor:pointer;">✖️</button>
+      <h2 style="margin-top:0;">Settings</h2>
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+        <input type="checkbox" id="dark-mode-toggle" style="transform:scale(1.3);"> Dark Mode
+      </label>
+    </div>
+  </div>
   <div class="container">
     <h1>Profile</h1>
     <p>This is the profile page. Add your profile details here.</p>
+    <button id="open-dm-modal" style="margin-top:24px;">Open DMs</button>
   </div>
+  <!-- DM Modal -->
+  <div id="dm-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.3); z-index:2000; align-items:center; justify-content:center;">
+    <div id="dm-modal-content" style="background:#fff; color:#222; padding:32px; border-radius:8px; min-width:320px; max-width:95vw; box-shadow:0 2px 16px rgba(0,0,0,0.2); position:relative;">
+      <button id="close-dm-modal" style="position:absolute; top:8px; right:12px; background:none; border:none; font-size:1.3em; cursor:pointer;">✖️</button>
+      <h2 style="margin-top:0;">Direct Messages</h2>
+      <div id="dm-list" style="max-height:200px; overflow-y:auto; margin-bottom:16px;"></div>
+      <div id="dm-thread" style="display:none;">
+        <div id="dm-messages" style="max-height:200px; overflow-y:auto; background:#f4f4f4; padding:8px; border-radius:4px; margin-bottom:8px;"></div>
+        <form id="dm-form" style="display:flex; gap:8px;">
+          <input id="dm-input" type="text" placeholder="Type a message..." style="flex:1; padding:8px; border-radius:4px; border:1px solid #ccc;">
+          <button type="submit">Send</button>
+        </form>
+        <button id="back-to-dm-list" style="margin-top:8px;">Back</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    // Dark mode logic
+    function setDarkMode(enabled) {
+      if (enabled) {
+        document.body.classList.add('dark-mode');
+        localStorage.setItem('darkMode', '1');
+      } else {
+        document.body.classList.remove('dark-mode');
+        localStorage.setItem('darkMode', '0');
+      }
+      // DM modal dark mode
+      const dmModalContent = document.getElementById('dm-modal-content');
+      if (dmModalContent) {
+        if (enabled) {
+          dmModalContent.style.background = '#23272a';
+          dmModalContent.style.color = '#e0e0e0';
+        } else {
+          dmModalContent.style.background = '#fff';
+          dmModalContent.style.color = '#222';
+        }
+      }
+    }
+    // Modal logic
+    const settingsBtn = document.getElementById('settings-btn');
+    const settingsModal = document.getElementById('settings-modal');
+    const closeSettings = document.getElementById('close-settings');
+    const darkModeToggle = document.getElementById('dark-mode-toggle');
+    settingsBtn.onclick = () => { settingsModal.style.display = 'flex'; };
+    closeSettings.onclick = () => { settingsModal.style.display = 'none'; };
+    settingsModal.onclick = e => { if (e.target === settingsModal) settingsModal.style.display = 'none'; };
+    darkModeToggle.onchange = e => setDarkMode(e.target.checked);
+    // On load, set dark mode if previously enabled
+    if (localStorage.getItem('darkMode') === '1') {
+      darkModeToggle.checked = true;
+      setDarkMode(true);
+    }
+
+    // DM modal logic
+    const openDmBtn = document.getElementById('open-dm-modal');
+    const dmModal = document.getElementById('dm-modal');
+    const closeDmModal = document.getElementById('close-dm-modal');
+    const dmList = document.getElementById('dm-list');
+    const dmThread = document.getElementById('dm-thread');
+    const dmMessages = document.getElementById('dm-messages');
+    const dmForm = document.getElementById('dm-form');
+    const dmInput = document.getElementById('dm-input');
+    const backToDmList = document.getElementById('back-to-dm-list');
+    let currentDmUser = null;
+
+    openDmBtn.onclick = () => {
+      dmModal.style.display = 'flex';
+      fetchDmList();
+      setDarkMode(document.body.classList.contains('dark-mode'));
+    };
+    closeDmModal.onclick = () => { dmModal.style.display = 'none'; };
+    dmModal.onclick = e => { if (e.target === dmModal) dmModal.style.display = 'none'; };
+
+    function fetchDmList() {
+      fetch('/api/dms/list', { credentials: 'include' })
+        .then(r => r.json())
+        .then(users => {
+          dmList.innerHTML = '';
+          if (!users.length) {
+            dmList.innerHTML = '<div style="color:#888;">No DMs yet.</div>';
+            return;
+          }
+          users.forEach(u => {
+            const btn = document.createElement('button');
+            btn.textContent = u;
+            btn.style = 'display:block;width:100%;margin-bottom:6px;padding:8px;border-radius:4px;border:1px solid #ccc;background:#f4f4f4;cursor:pointer;';
+            btn.onclick = () => openDmThread(u);
+            dmList.appendChild(btn);
+          });
+        });
+      dmThread.style.display = 'none';
+      dmList.style.display = 'block';
+    }
+    function openDmThread(user) {
+      currentDmUser = user;
+      dmList.style.display = 'none';
+      dmThread.style.display = 'block';
+      fetch(`/api/dms/with/${encodeURIComponent(user)}`, { credentials: 'include' })
+        .then(r => r.json())
+        .then(msgs => {
+          dmMessages.innerHTML = '';
+          msgs.forEach(m => {
+            const div = document.createElement('div');
+            div.textContent = `${m.from}: ${m.text}`;
+            div.style = 'margin-bottom:4px;';
+            dmMessages.appendChild(div);
+          });
+        });
+    }
+    dmForm.onsubmit = e => {
+      e.preventDefault();
+      if (!dmInput.value.trim()) return;
+      fetch(`/api/dms/with/${encodeURIComponent(currentDmUser)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ text: dmInput.value })
+      }).then(() => {
+        openDmThread(currentDmUser);
+        dmInput.value = '';
+      });
+    };
+    backToDmList.onclick = fetchDmList;
+  </script>
 </body>
 </html>

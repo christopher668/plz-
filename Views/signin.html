@@ -5,57 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sign In</title>
   <style>
-    body {
-      background: #f4f4f4;
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-    }
-    .container {
-      max-width: 400px;
-      margin: 80px auto;
-      background: #fff;
-      padding: 32px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    h2 {
-      text-align: center;
-      color: #333;
-    }
-    label {
-      display: block;
-      margin-top: 16px;
-      color: #555;
-    }
-    input[type="text"], input[type="password"] {
-      width: 100%;
-      padding: 10px;
-      margin-top: 6px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      box-sizing: border-box;
-    }
-    button {
-      width: 100%;
-      padding: 12px;
-      margin-top: 24px;
-      background: #007bff;
-      color: #fff;
-      border: none;
-      border-radius: 4px;
-      font-size: 16px;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-    button:hover {
-      background: #0056b3;
-    }
-    .error {
-      color: #d00;
-      margin-top: 12px;
-      text-align: center;
-    }
+    body { background: #f4f4f4; font-family: Arial, sans-serif; margin: 0; padding: 0; }
+    .container { max-width: 400px; margin: 80px auto; background: #fff; padding: 32px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    h2 { text-align: center; color: #333; }
+    label { display: block; margin-top: 16px; color: #555; }
+    input[type="text"], input[type="password"] { width: 100%; padding: 10px; margin-top: 6px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    button { width: 100%; padding: 12px; margin-top: 24px; background: #007bff; color: #fff; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; transition: background 0.2s; }
+    button:hover { background: #0056b3; }
+    .error { color: #d00; margin-top: 12px; text-align: center; }
+    /* Dark mode styles */
+    body.dark-mode { background: #181a1b !important; color: #e0e0e0 !important; }
+    body.dark-mode .container { background: #23272a !important; color: #e0e0e0 !important; box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important; }
+    body.dark-mode input, body.dark-mode textarea { background: #222 !important; color: #e0e0e0 !important; border-color: #444 !important; }
+    body.dark-mode button, body.dark-mode [type='submit'] { background: #222 !important; color: #fff !important; border-color: #444 !important; }
   </style>
 </head>
 <body>
@@ -69,7 +31,30 @@
       <button type="submit">Sign In</button>
       <div class="error" id="error-msg"></div>
     </form>
+    <div style="margin-top:24px; text-align:center;">
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; justify-content:center;">
+        <input type="checkbox" id="dark-mode-toggle" style="transform:scale(1.3);"> Dark Mode
+      </label>
+    </div>
   </div>
   <script src="signin.js"></script>
+  <script>
+    // Dark mode logic for sign-in
+    function setDarkMode(enabled) {
+      if (enabled) {
+        document.body.classList.add('dark-mode');
+        localStorage.setItem('darkMode', '1');
+      } else {
+        document.body.classList.remove('dark-mode');
+        localStorage.setItem('darkMode', '0');
+      }
+    }
+    const darkModeToggle = document.getElementById('dark-mode-toggle');
+    darkModeToggle.onchange = e => setDarkMode(e.target.checked);
+    if (localStorage.getItem('darkMode') === '1') {
+      darkModeToggle.checked = true;
+      setDarkMode(true);
+    }
+  </script>
 </body>
 </html>

@@ -3,6 +3,36 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
+// File-based storage setup
+const DATA_DIR = path.join(__dirname, 'data');
+const DM_FILE = path.join(DATA_DIR, 'dms.json');
+const REPORT_FILE = path.join(DATA_DIR, 'reports.json');
+const SUSPEND_FILE = path.join(DATA_DIR, 'suspended.json');
+
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
+if (!fs.existsSync(DM_FILE)) fs.writeFileSync(DM_FILE, '[]');
+if (!fs.existsSync(REPORT_FILE)) fs.writeFileSync(REPORT_FILE, '[]');
+if (!fs.existsSync(SUSPEND_FILE)) fs.writeFileSync(SUSPEND_FILE, '{}');
+
+function readDMs() {
+  return JSON.parse(fs.readFileSync(DM_FILE, 'utf8'));
+}
+function writeDMs(dms) {
+  fs.writeFileSync(DM_FILE, JSON.stringify(dms, null, 2));
+}
+function readReports() {
+  return JSON.parse(fs.readFileSync(REPORT_FILE, 'utf8'));
+}
+function writeReports(reports) {
+  fs.writeFileSync(REPORT_FILE, JSON.stringify(reports, null, 2));
+}
+function readSuspended() {
+  return JSON.parse(fs.readFileSync(SUSPEND_FILE, 'utf8'));
+}
+function writeSuspended(suspended) {
+  fs.writeFileSync(SUSPEND_FILE, JSON.stringify(suspended, null, 2));
+}
+
 const port = 3000;
 const base = path.join(__dirname);
 
@@ -24,138 +54,56 @@ let nextReportId = 1;
 
 // Suspended users: { username: true }
 const suspended = {};
-  // Handle report POST
-  if (req.url === '/api/report' && req.method === 'POST') {
-    let body = '';
-    req.on('data', chunk => { body += chunk; });
-    req.on('end', () => {
-      try {
-        const data = JSON.parse(body);
-        let from = 'Anonymous';
-        const cookies = parseCookies(req.headers.cookie);
-        if (cookies.session && sessions[cookies.session]) {
-          from = sessions[cookies.session].username;
-        }
-        const reported = data.reported;
-        const reason = data.reason;
-        if (!reported || !reason) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ success: false, message: 'Reported user and reason required.' }));
-          return;
-        }
-        const reportObj = { id: nextReportId++, from, reported, reason, time: new Date().toISOString() };
-        reports.push(reportObj);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: true, report: reportObj }));
-      } catch (e) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: false, message: 'Bad request' }));
-      }
-    });
-    return;
-  }
 
-  // Handle suspension (dev only)
-  if (req.url === '/api/suspend' && req.method === 'POST') {
-    let body = '';
-    req.on('data', chunk => { body += chunk; });
-    req.on('end', () => {
-      try {
-        const data = JSON.parse(body);
-        const cookies = parseCookies(req.headers.cookie);
-        if (!(cookies.session && sessions[cookies.session] && sessions[cookies.session].username === 'dev')) {
-          res.writeHead(403, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ success: false, message: 'Only dev can suspend.' }));
-          return;
-        }
-        const user = data.user;
-        if (!user) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ success: false, message: 'User required.' }));
-          return;
-        }
-        suspended[user] = true;
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: true }));
-      } catch (e) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: false, message: 'Bad request' }));
-      }
-    });
-    return;
-  }
-
-  // Handle DM POST
-  if (req.url === '/api/dm' && req.method === 'POST') {
-    let body = '';
-    req.on('data', chunk => { body += chunk; });
-    req.on('end', () => {
-      try {
-        const data = JSON.parse(body);
-        // Get sender username from session
-        let from = 'Anonymous';
-        const cookies = parseCookies(req.headers.cookie);
-        if (cookies.session && sessions[cookies.session]) {
-          from = sessions[cookies.session].username;
-        }
-        const to = data.to;
-        if (!to || typeof data.message !== 'string' || !data.message.trim()) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ success: false, message: 'Recipient and message required.' }));
-          return;
-        }
-        // Block suspended users from sending DMs
-        if (suspended[from]) {
-          res.writeHead(403, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ success: false, message: 'You are suspended.' }));
-          return;
-        }
-        // Store DM under a sorted key
-        const key = [from, to].sort().join('_');
-        if (!dms[key]) dms[key] = [];
-        const dmObj = { from, to, message: data.message.trim(), time: new Date().toISOString() };
-        dms[key].push(dmObj);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: true, dm: dmObj }));
-      } catch (e) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: false, message: 'Bad request' }));
-      }
-    });
-    return;
-  }
-
-  // Handle DM GET (query: ?user=username)
-  if (req.url.startsWith('/api/dm?user=') && req.method === 'GET') {
-    // Get current user from session
-    let from = 'Anonymous';
-    const cookies = parseCookies(req.headers.cookie);
-    if (cookies.session && sessions[cookies.session]) {
-      from = sessions[cookies.session].username;
-    }
-    const to = decodeURIComponent(req.url.split('=')[1] || '');
-    const key = [from, to].sort().join('_');
-    const convo = dms[key] || [];
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(convo));
-    return;
-  }
-
-function parseCookies(cookieHeader) {
-  const cookies = {};
-  if (!cookieHeader) return cookies;
-  cookieHeader.split(';').forEach(cookie => {
-    const [name, ...rest] = cookie.trim().split('=');
-    cookies[name] = decodeURIComponent(rest.join('='));
-  });
-  return cookies;
-}
-
-function generateSessionId() {
-  return Math.random().toString(36).slice(2) + Date.now();
-}
 
 const server = http.createServer((req, res) => {
+  // Handle sign-in POST
+  if (req.url === '/api/signin' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        const data = JSON.parse(body);
+        let user = null;
+        if (data.username === USER.username && data.password === USER.password) {
+          user = USER;
+        } else if (data.username === DEV.username && data.password === DEV.password) {
+          user = DEV;
+        }
+        // Block suspended users from logging in (file-based)
+        if (user) {
+          const suspended = readSuspended();
+          if (suspended[user.username]) {
+            res.writeHead(403, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, message: 'You are suspended.' }));
+            return;
+          }
+          const sessionId = generateSessionId();
+          sessions[sessionId] = { username: user.username };
+          res.writeHead(200, {
+            'Set-Cookie': `session=${sessionId}; HttpOnly; Path=/`,
+            'Content-Type': 'application/json'
+          });
+          res.end(JSON.stringify({ success: true }));
+        } else {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, message: 'Invalid credentials' }));
+        }
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, message: 'Bad request' }));
+      }
+    });
+    return;
+  }
+
+  // Endpoint to get all messages
+  if (req.url === '/api/messages' && req.method === 'GET') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(messages));
+    return;
+  }
+
   // Handle texting POST
   if (req.url === '/api/text' && req.method === 'POST') {
     let body = '';
@@ -199,51 +147,6 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Endpoint to get all messages
-  if (req.url === '/api/messages' && req.method === 'GET') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(messages));
-    return;
-  }
-  // Handle sign-in POST
-  if (req.url === '/api/signin' && req.method === 'POST') {
-    let body = '';
-    req.on('data', chunk => { body += chunk; });
-    req.on('end', () => {
-      try {
-        const data = JSON.parse(body);
-        let user = null;
-        if (data.username === USER.username && data.password === USER.password) {
-          user = USER;
-        } else if (data.username === DEV.username && data.password === DEV.password) {
-          user = DEV;
-        }
-        // Block suspended users from logging in
-        if (user && suspended[user.username]) {
-          res.writeHead(403, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ success: false, message: 'You are suspended.' }));
-          return;
-        }
-        if (user) {
-          const sessionId = generateSessionId();
-          sessions[sessionId] = { username: user.username };
-          res.writeHead(200, {
-            'Set-Cookie': `session=${sessionId}; HttpOnly; Path=/`,
-            'Content-Type': 'application/json'
-          });
-          res.end(JSON.stringify({ success: true }));
-        } else {
-          res.writeHead(401, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ success: false, message: 'Invalid credentials' }));
-        }
-      } catch (e) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: false, message: 'Bad request' }));
-      }
-    });
-    return;
-  }
-
   // Check session for protected pages
   const cookies = parseCookies(req.headers.cookie);
   const session = sessions[cookies.session];
@@ -253,93 +156,183 @@ const server = http.createServer((req, res) => {
     res.end();
     return;
   }
-
-  // Serve static files
-  let filePath = path.join(base, req.url === '/' ? '/index.html' : req.url);
-  if (!filePath.startsWith(base)) {
-    res.writeHead(403);
-    res.end('Forbidden');
+  // Handle report POST
+  if (req.url === '/api/report' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        const data = JSON.parse(body);
+        let from = 'Anonymous';
+        const cookies = parseCookies(req.headers.cookie);
+        if (cookies.session && sessions[cookies.session]) {
+          from = sessions[cookies.session].username;
+        }
+        const reported = data.reported;
+        const reason = data.reason;
+        if (!reported || !reason) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, message: 'Reported user and reason required.' }));
+          return;
+        }
+        const reports = readReports();
+        const reportObj = { id: Date.now(), from, reported, reason, time: new Date().toISOString() };
+        reports.push(reportObj);
+        writeReports(reports);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, report: reportObj }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, message: 'Bad request' }));
+      }
+    });
     return;
   }
-  fs.readFile(filePath, (err, data) => {
-    if (err) {
-      res.writeHead(404);
-      res.end('Not found');
+
+  // Handle suspension (dev only)
+  if (req.url === '/api/suspend' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        const data = JSON.parse(body);
+        const cookies = parseCookies(req.headers.cookie);
+        if (!(cookies.session && sessions[cookies.session] && sessions[cookies.session].username === 'dev')) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, message: 'Only dev can suspend.' }));
+          return;
+        }
+        const user = data.user;
+        if (!user) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, message: 'User required.' }));
+          return;
+        }
+        const suspended = readSuspended();
+        suspended[user] = true;
+        writeSuspended(suspended);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, message: 'Bad request' }));
+      }
+    });
+    return;
+  }
+
+  // Handle DM POST
+  if (req.url === '/api/dm' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        const data = JSON.parse(body);
+        // Get sender username from session
+        let from = 'Anonymous';
+        const cookies = parseCookies(req.headers.cookie);
+        if (cookies.session && sessions[cookies.session]) {
+          from = sessions[cookies.session].username;
+        }
+        const to = data.to;
+        if (!to || typeof data.message !== 'string' || !data.message.trim()) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, message: 'Recipient and message required.' }));
+          return;
+        }
+        // Block suspended users from sending DMs
+        const suspended = readSuspended();
+        if (suspended[from]) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, message: 'You are suspended.' }));
+          return;
+        }
+        const dms = readDMs();
+        const dmObj = { from, to, message: data.message.trim(), time: new Date().toISOString() };
+        dms.push(dmObj);
+        writeDMs(dms);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, dm: dmObj }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, message: 'Bad request' }));
+      }
+    });
+    return;
+  }
+
+  // Handle DM GET (query: ?user=username)
+  if (req.url.startsWith('/api/dm?user=') && req.method === 'GET') {
+    // Get current user from session
+    let from = 'Anonymous';
+    const cookies = parseCookies(req.headers.cookie);
+    if (cookies.session && sessions[cookies.session]) {
+      from = sessions[cookies.session].username;
+    }
+    const to = decodeURIComponent(req.url.split('=')[1] || '');
+    // Find all DMs between from and to
+    const dms = readDMs();
+    const convo = dms.filter(dm =>
+      (dm.from === from && dm.to === to) || (dm.from === to && dm.to === from)
+    ).sort((a, b) => new Date(a.time) - new Date(b.time));
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(convo));
+    return;
+  }
+
+  // Serve static files from Views directory
+  // Only run if not an API route
+  if (!req.url.startsWith('/api/')) {
+    let filePath;
+    if (req.url === '/' || req.url === '') {
+      filePath = path.join(base, 'index.html');
+    } else {
+      // Remove leading slash to avoid path.join ignoring base
+      filePath = path.join(base, req.url.replace(/^\//, ''));
+    }
+    // Prevent directory traversal
+    if (!filePath.startsWith(base)) {
+      res.writeHead(403);
+      res.end('Forbidden');
       return;
     }
-    let ext = path.extname(filePath);
-    let type = 'text/html';
-    if (ext === '.js') type = 'application/javascript';
-    res.writeHead(200, { 'Content-Type': type });
-    res.end(data);
-  });
-});
-
-server.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}/`);
-  console.log('Demo user: user / pass');
-});
-
-window.addEventListener('DOMContentLoaded', () => {
-  const nav = document.querySelector('nav div');
-  if (nav && !document.getElementById('dm-dev-btn')) {
-    const dmDevBtn = document.createElement('button');
-    dmDevBtn.id = 'dm-dev-btn';
-    dmDevBtn.textContent = 'DM Dev';
-    dmDevBtn.style.marginLeft = '16px';
-    dmDevBtn.style.background = '#007bff';
-    dmDevBtn.style.color = '#fff';
-    dmDevBtn.style.border = 'none';
-    dmDevBtn.style.borderRadius = '4px';
-    dmDevBtn.style.padding = '6px 16px';
-    dmDevBtn.style.fontSize = '1em';
-    dmDevBtn.style.cursor = 'pointer';
-    dmDevBtn.onclick = () => showDmModal('dev');
-    nav.appendChild(dmDevBtn);
-  }
-});
-
-function showDmModal(username) {
-  const dmModal = document.getElementById('dm-modal');
-  dmModal.style.display = 'block';
-  const dmUsername = dmModal.querySelector('#dm-username');
-  dmUsername.textContent = username;
-
-  // Load existing messages
-  loadDmMessages(username);
-
-  // Close modal handler
-  dmModal.querySelector('#close-dm-modal').onclick = () => {
-    dmModal.style.display = 'none';
-  };
-
-  // DM form submit handler
-  const dmForm = dmModal.querySelector('#dm-form');
-  dmForm.onsubmit = async (e) => {
-    e.preventDefault();
-    const messageInput = dmModal.querySelector('#dm-message');
-    const message = messageInput.value.trim();
-    if (!message) return;
-    messageInput.value = '';
-    const statusDiv = dmModal.querySelector('#dm-status');
-    statusDiv.textContent = 'Sending...';
-
-    // Send DM
-    const resp = await fetch('/api/dm', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to: username, message })
+    fs.readFile(filePath, (err, data) => {
+      if (err) {
+        res.writeHead(404);
+        res.end('Not found');
+        return;
+      }
+      let ext = path.extname(filePath).toLowerCase();
+      let type = 'text/html';
+      if (ext === '.js') type = 'application/javascript';
+      else if (ext === '.css') type = 'text/css';
+      else if (ext === '.json') type = 'application/json';
+      else if (ext === '.png') type = 'image/png';
+      else if (ext === '.jpg' || ext === '.jpeg') type = 'image/jpeg';
+      else if (ext === '.svg') type = 'image/svg+xml';
+      res.writeHead(200, { 'Content-Type': type });
+      res.end(data);
     });
-    const data = await resp.json();
-    if (data.success) {
-      statusDiv.textContent = 'Sent!';
-      // Append message to DM window
-      appendDmMessage(data.dm);
-    } else {
-      statusDiv.textContent = 'Error: ' + (data.message || 'Unknown error');
-    }
-  };
+    return;
+  }
+
+});
+
+function parseCookies(cookieHeader) {
+  const cookies = {};
+  if (!cookieHeader) return cookies;
+  cookieHeader.split(';').forEach(cookie => {
+    const [name, ...rest] = cookie.trim().split('=');
+    cookies[name] = decodeURIComponent(rest.join('='));
+  });
+  return cookies;
 }
+
+function generateSessionId() {
+  return Math.random().toString(36).slice(2) + Date.now();
+}
+
+// ...existing code...
 
 function loadDmMessages(username) {
   const dmMessagesDiv = document.getElementById('dm-messages');
@@ -381,29 +374,17 @@ function appendDmMessage(dm) {
 //   </div>
 // </div>
 
-// If dev, show suspend button (demo: show for all, but only dev can use)
-if (username !== 'dev') {
-  const suspendDiv = dmModal.querySelector('#suspend-user-div');
-  suspendDiv.innerHTML = '<button id="suspend-user-btn" style="background:#d00;color:#fff;padding:8px 16px;border:none;border-radius:4px;cursor:pointer;">Suspend User</button>';
-  suspendDiv.querySelector('#suspend-user-btn').onclick = async function() {
-    if (!confirm('Are you sure you want to suspend ' + username + '?')) return;
-    const resp = await fetch('/api/suspend', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user: username })
-    });
-    const data = await resp.json();
-    if (data.success) {
-      alert('User suspended!');
-      dmModal.remove();
-    } else {
-      alert(data.message || 'Failed to suspend.');
-    }
-  };
-}
+// (Client-side suspend button code removed from server file)
 
 // Report modal
 let reportModal = null;
+
+// Start the HTTP server
+server.listen(port, () => {
+  console.log(`Server running at http://localhost:${port}/`);
+  console.log('Demo user: user / pass');
+});
+
 function showReportModal(username) {
   if (reportModal) reportModal.remove();
   reportModal = document.createElement('div');
