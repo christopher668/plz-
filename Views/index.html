@@ -3,12 +3,341 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HFCA Mission</title>
+  <title>HFCA Group Chat</title>
+  <meta name="description" content="HFCA Group Chat - A place for Dr. Howard Fuller Collegiate Academy students to chat and connect." />
+  <meta name="keywords" content="HFCA, group chat, Howard Fuller, Collegiate Academy, student chat, dashboard, schedule, profile" />
+  <meta property="og:title" content="HFCA Group Chat" />
+  <meta property="og:description" content="A place for Dr. Howard Fuller Collegiate Academy students to chat and connect." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://yourdomain.com/" />
+  <meta property="og:site_name" content="HFCA Group Chat" />
 </head>
 <body>
-  <h1 style="text-align:center; margin-top:80px; color:#333; font-family:Arial, sans-serif;">HFCA mission</h1>
-  <p style="max-width:600px; margin:32px auto 0 auto; color:#444; font-size:1.2em; text-align:center; font-family:Arial, sans-serif;">
-    Dr. Howard Fuller Collegiate Academy's mission is to nurture scholars capable of transforming their world by sending them to and through college.
-  </p>
+  <nav style="width:100%;background:#222;padding:16px 0 12px 0;position:fixed;top:0;left:0;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+    <div style="max-width:900px;margin:0 auto;display:flex;align-items:center;">
+      <a href="/index.html" style="color:#fff;text-decoration:none;font-size:1.2em;font-weight:bold;margin-right:32px;">Dashboard</a>
+      <a href="/schedule.html" style="color:#fff;text-decoration:none;font-size:1.1em;margin-right:32px;">Schedule</a>
+      <a href="/profile.html" style="color:#fff;text-decoration:none;font-size:1.1em;">Profile</a>
+      <button id="settings-btn" style="margin-left:auto; background:none; border:none; color:#fff; font-size:1.1em; cursor:pointer;">⚙️ Settings</button>
+    </div>
+  </nav>
+  <div style="height:64px;"></div>
+  <h1 style="text-align:center; margin-top:0; color:#333; font-family:Arial, sans-serif;">Group Chat</h1>
+  <div id="settings-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.3); z-index:1000; align-items:center; justify-content:center;">
+    <div style="background:#fff; color:#222; padding:32px; border-radius:8px; min-width:300px; max-width:90vw; box-shadow:0 2px 16px rgba(0,0,0,0.2); position:relative;">
+      <button id="close-settings" style="position:absolute; top:8px; right:12px; background:none; border:none; font-size:1.3em; cursor:pointer;">✖️</button>
+      <h2 style="margin-top:0;">Settings</h2>
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+        <input type="checkbox" id="dark-mode-toggle" style="transform:scale(1.3);"> Dark Mode
+      </label>
+    </div>
+  </div>
+  <div style="max-width:500px; margin:32px auto 0 auto; background:#fff; padding:32px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1); display:flex; flex-direction:column; min-height:400px;">
+    <div id="messages" style="flex:1 1 auto; min-height:120px; border-top:1px solid #eee; padding-top:16px; margin-bottom:24px;"></div>
+    <div style="flex-shrink:0;">
+      <button id="open-text-box" style="width:100%; padding:12px; background:#007bff; color:#fff; border:none; border-radius:4px; font-size:16px; cursor:pointer;">Text</button>
+      <form id="text-form" style="display:none; margin-top:16px;">
+        <label for="message" style="display:block; margin-bottom:8px; color:#555; font-size:1.1em;">Enter your message:</label>
+        <textarea id="message" name="message" rows="3" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px; font-size:1em;"></textarea>
+        <button type="submit" style="margin-top:16px; width:100%; padding:12px; background:#007bff; color:#fff; border:none; border-radius:4px; font-size:16px; cursor:pointer;">Send</button>
+        <div id="text-status" style="margin-top:12px; color:#007bff; text-align:center;"></div>
+      </form>
+    </div>
+  </div>
+  <script>
+    // Dark mode logic
+    function setDarkMode(enabled) {
+      if (enabled) {
+        document.body.classList.add('dark-mode');
+        localStorage.setItem('darkMode', '1');
+      } else {
+        document.body.classList.remove('dark-mode');
+        localStorage.setItem('darkMode', '0');
+      }
+    }
+    // Modal logic
+    const settingsBtn = document.getElementById('settings-btn');
+    const settingsModal = document.getElementById('settings-modal');
+    const closeSettings = document.getElementById('close-settings');
+    const darkModeToggle = document.getElementById('dark-mode-toggle');
+    settingsBtn.onclick = () => { settingsModal.style.display = 'flex'; };
+    closeSettings.onclick = () => { settingsModal.style.display = 'none'; };
+    settingsModal.onclick = e => { if (e.target === settingsModal) settingsModal.style.display = 'none'; };
+    darkModeToggle.onchange = e => setDarkMode(e.target.checked);
+    // On load, set dark mode if previously enabled
+    if (localStorage.getItem('darkMode') === '1') {
+      darkModeToggle.checked = true;
+      setDarkMode(true);
+    }
+    // Dark mode styles
+    const darkStyle = document.createElement('style');
+    darkStyle.textContent = `
+      body.dark-mode {
+        background: #181a1b !important;
+        color: #e0e0e0 !important;
+      }
+      body.dark-mode nav { background: #111 !important; }
+      body.dark-mode .container, body.dark-mode [style*='background:#fff'] {
+        background: #23272a !important;
+        color: #e0e0e0 !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important;
+      }
+      body.dark-mode input, body.dark-mode textarea {
+        background: #222 !important;
+        color: #e0e0e0 !important;
+        border-color: #444 !important;
+      }
+      body.dark-mode button, body.dark-mode [type='submit'] {
+        background: #222 !important;
+        color: #fff !important;
+        border-color: #444 !important;
+      }
+      body.dark-mode #settings-modal > div {
+        background: #23272a !important;
+        color: #e0e0e0 !important;
+      }
+    `;
+    document.head.appendChild(darkStyle);
+    const form = document.getElementById('text-form');
+    const statusDiv = document.getElementById('text-status');
+    const messagesDiv = document.getElementById('messages');
+
+    let allMessages = [];
+    let replyToId = null;
+
+    function renderMessages() {
+      messagesDiv.innerHTML = '';
+      // Build a map of messages by id
+      const msgMap = {};
+      allMessages.forEach(m => { msgMap[m.id] = { ...m, replies: [] }; });
+      // Build the tree
+      allMessages.forEach(m => {
+        if (m.parentId && msgMap[m.parentId]) {
+          msgMap[m.parentId].replies.push(msgMap[m.id]);
+        }
+      });
+      // Render only root messages
+      allMessages.filter(m => !m.parentId).forEach(m => {
+        messagesDiv.appendChild(renderMessageNode(msgMap[m.id]));
+      });
+    }
+
+    // DM menu and modal
+    let dmMenu = null;
+    let dmModal = null;
+    let dmToUser = null;
+    function showDmMenu(username, x, y) {
+      if (dmMenu) dmMenu.remove();
+      dmMenu = document.createElement('div');
+      dmMenu.style.position = 'fixed';
+      dmMenu.style.left = x + 'px';
+      dmMenu.style.top = y + 'px';
+      dmMenu.style.background = '#fff';
+      dmMenu.style.color = '#222';
+      dmMenu.style.border = '1px solid #007bff';
+      dmMenu.style.borderRadius = '6px';
+      dmMenu.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+      dmMenu.style.zIndex = 2000;
+      dmMenu.style.padding = '8px 0';
+      dmMenu.innerHTML = `<div style='padding:8px 24px;cursor:pointer;' id='dm-send'>Send DM to <b>${username}</b></div>`;
+      document.body.appendChild(dmMenu);
+      document.getElementById('dm-send').onclick = () => {
+        showDmModal(username);
+        dmMenu.remove();
+      };
+      document.addEventListener('mousedown', hideDmMenu, { once: true });
+    }
+    function hideDmMenu(e) {
+      if (dmMenu) dmMenu.remove();
+      dmMenu = null;
+    }
+
+    function showDmModal(username) {
+      dmToUser = username;
+      if (dmModal) dmModal.remove();
+      dmModal = document.createElement('div');
+      dmModal.style.position = 'fixed';
+      dmModal.style.left = 0;
+      dmModal.style.top = 0;
+      dmModal.style.width = '100vw';
+      dmModal.style.height = '100vh';
+      dmModal.style.background = 'rgba(0,0,0,0.3)';
+      dmModal.style.zIndex = 3000;
+      dmModal.style.display = 'flex';
+      dmModal.style.alignItems = 'center';
+      dmModal.style.justifyContent = 'center';
+      dmModal.innerHTML = `
+        <div style="background:#fff; color:#222; padding:32px; border-radius:8px; min-width:320px; max-width:90vw; box-shadow:0 2px 16px rgba(0,0,0,0.2); position:relative;">
+          <button id="close-dm-modal" style="position:absolute; top:8px; right:12px; background:none; border:none; font-size:1.3em; cursor:pointer;">✖️</button>
+          <h2 style="margin-top:0;">DM with <span id="dm-username"></span></h2>
+          <div id="dm-messages" style="max-height:200px; overflow-y:auto; background:#f4f4f4; padding:12px; border-radius:6px; margin-bottom:12px;"></div>
+          <form id="dm-form">
+            <textarea id="dm-message" rows="2" style="width:100%; padding:8px; border-radius:4px; border:1px solid #ccc;"></textarea>
+            <button type="submit" style="margin-top:8px; width:100%; padding:10px; background:#007bff; color:#fff; border:none; border-radius:4px; font-size:15px; cursor:pointer;">Send</button>
+            <div id="dm-status" style="margin-top:8px; color:#007bff; text-align:center;"></div>
+          </form>
+        </div>
+      `;
+      document.body.appendChild(dmModal);
+      document.getElementById('close-dm-modal').onclick = () => { dmModal.remove(); dmModal = null; };
+      document.getElementById('dm-username').textContent = username;
+      fetchDmMessages(username);
+      document.getElementById('dm-form').onsubmit = async function(e) {
+        e.preventDefault();
+        const msg = document.getElementById('dm-message').value.trim();
+        if (!msg) return;
+        document.getElementById('dm-status').textContent = 'Sending...';
+        try {
+          const res = await fetch('/api/dm', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ to: username, message: msg })
+          });
+          const data = await res.json();
+          if (data.success) {
+            document.getElementById('dm-status').textContent = 'Sent!';
+            document.getElementById('dm-form').reset();
+            await fetchDmMessages(username);
+          } else {
+            document.getElementById('dm-status').textContent = data.message || 'Failed to send.';
+          }
+        } catch (err) {
+          document.getElementById('dm-status').textContent = 'Network error.';
+        }
+      };
+      document.getElementById('dm-message').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          document.getElementById('dm-form').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+        }
+      });
+    }
+
+    async function fetchDmMessages(username) {
+      const dmMessagesDiv = document.getElementById('dm-messages');
+      dmMessagesDiv.innerHTML = 'Loading...';
+      try {
+        const res = await fetch('/api/dm?user=' + encodeURIComponent(username));
+        const data = await res.json();
+        dmMessagesDiv.innerHTML = '';
+        data.forEach(dm => {
+          const p = document.createElement('p');
+          p.textContent = `[${new Date(dm.time).toLocaleTimeString()}] ${dm.from}: ${dm.message}`;
+          p.style.margin = '6px 0';
+          p.style.color = dm.from === username ? '#007bff' : '#333';
+          dmMessagesDiv.appendChild(p);
+        });
+        dmMessagesDiv.scrollTop = dmMessagesDiv.scrollHeight;
+      } catch (err) {
+        dmMessagesDiv.innerHTML = '<span style="color:#d00">Failed to load DMs.</span>';
+      }
+    }
+
+    function renderMessageNode(msg) {
+      const div = document.createElement('div');
+      div.style.margin = '6px 0 6px 0';
+      div.style.paddingLeft = msg.parentId ? '24px' : '0';
+      const p = document.createElement('p');
+      // Username and message, timestamp on hover
+      const userSpan = document.createElement('span');
+      userSpan.textContent = msg.username ? msg.username : 'Anonymous';
+      userSpan.style.fontWeight = 'bold';
+      userSpan.style.color = '#007bff';
+      userSpan.style.marginRight = '8px';
+      userSpan.style.cursor = 'pointer';
+      userSpan.onclick = e => {
+        e.stopPropagation();
+        showDmMenu(msg.username, e.clientX, e.clientY);
+      };
+      p.appendChild(userSpan);
+      const msgSpan = document.createElement('span');
+      msgSpan.textContent = msg.message;
+      p.appendChild(msgSpan);
+      p.title = new Date(msg.time).toLocaleString();
+      p.style.color = '#333';
+      p.style.margin = '0';
+      div.appendChild(p);
+      const replyBtn = document.createElement('button');
+      replyBtn.textContent = 'Reply';
+      replyBtn.style.margin = '2px 0 0 8px';
+      replyBtn.style.fontSize = '0.9em';
+      replyBtn.style.padding = '2px 8px';
+      replyBtn.style.borderRadius = '4px';
+      replyBtn.style.border = '1px solid #007bff';
+      replyBtn.style.background = '#fff';
+      replyBtn.style.color = '#007bff';
+      replyBtn.style.cursor = 'pointer';
+      replyBtn.onclick = () => {
+        replyToId = msg.id;
+        document.getElementById('message').focus();
+        statusDiv.textContent = `Replying to message #${msg.id}`;
+      };
+      div.appendChild(replyBtn);
+      // Render replies
+      if (msg.replies && msg.replies.length) {
+        msg.replies.forEach(r => div.appendChild(renderMessageNode(r)));
+      }
+      return div;
+    }
+
+    async function fetchMessages() {
+      try {
+        const res = await fetch('/api/messages');
+        allMessages = await res.json();
+        renderMessages();
+      } catch (err) {
+        messagesDiv.innerHTML = '<span style="color:#d00">Failed to load messages.</span>';
+      }
+    }
+
+    // Show/hide text box
+    const openTextBoxBtn = document.getElementById('open-text-box');
+    openTextBoxBtn.addEventListener('click', function() {
+      form.style.display = form.style.display === 'none' ? 'block' : 'none';
+      if (form.style.display === 'block') {
+        document.getElementById('message').focus();
+      }
+    });
+
+    // Submit on Enter (without Shift)
+    document.getElementById('message').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+      }
+    });
+
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const msg = document.getElementById('message').value.trim();
+      if (!msg) {
+        statusDiv.textContent = 'Please enter a message.';
+        return;
+      }
+      statusDiv.textContent = 'Sending...';
+      try {
+        const res = await fetch('/api/text', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(replyToId ? { message: msg, parentId: replyToId } : { message: msg })
+        });
+        const data = await res.json();
+        if (data.success) {
+          statusDiv.textContent = 'Message sent!';
+          form.reset();
+          replyToId = null;
+          await fetchMessages();
+        } else {
+          statusDiv.textContent = data.message || 'Failed to send.';
+        }
+      } catch (err) {
+        statusDiv.textContent = 'Network error.';
+      }
+    });
+
+    // Poll for new messages every 2 seconds
+    setInterval(fetchMessages, 2000);
+    fetchMessages();
+  </script>
 </body>
 </html>
