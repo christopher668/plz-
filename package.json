@@ -1,0 +1,11 @@
+{
+  "name": "plz-",
+  "version": "1.0.0",
+  "description": "",
+  "main": "Views/index.js",
+  "scripts": {
+    "start": "node Views/server.js"
+  },
+  "author": "",
+  "license": "ISC"
+}
