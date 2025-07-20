@@ -13,7 +13,7 @@
     .dm-item { padding: 16px 0; border-bottom: 1px solid #eee; cursor: pointer; }
     .dm-item:last-child { border-bottom: none; }
     .dm-item:hover { background: #f4f4f4; }
-    .dm-user { font-weight: bold; color: #007bff; }
+    .dm-user-link { font-weight: bold; color: #007bff; text-decoration: underline; cursor: pointer; }
     .dm-message { color: #555; font-size: 1em; margin-top: 2px; }
     .dm-time { color: #aaa; font-size: 0.9em; margin-top: 2px; }
   </style>
@@ -40,10 +40,13 @@
           const last = convo.lastMessage;
           const div = document.createElement('div');
           div.className = 'dm-item';
-          div.onclick = () => { window.location.href = `/dms.html?user=${encodeURIComponent(user)}`; };
-          div.innerHTML = `<span class='dm-user'>${user}</span>` +
+          div.innerHTML = `<a class='dm-user-link' href="/dms.html?user=${encodeURIComponent(user)}">${user}</a>` +
             `<div class='dm-message'><b>${last.from === user ? 'From' : 'To'}:</b> ${last.message}</div>` +
             `<div class='dm-time'>${new Date(last.time).toLocaleString()}</div>`;
+          div.onclick = (e) => {
+            if (e.target.classList.contains('dm-user-link')) return;
+            window.location.href = `/dms.html?user=${encodeURIComponent(user)}`;
+          };
           dmList.appendChild(div);
         });
       } catch (err) {

@@ -187,11 +187,13 @@ async function loadRecentDMsDropdown() {
       div.style.cursor = 'pointer';
       div.onmouseover = () => div.style.background = '#f4f4f4';
       div.onmouseout = () => div.style.background = '';
-      div.onclick = () => { window.location.href = `/dms.html?user=${encodeURIComponent(user)}`; };
-      const direction = last.from === user ? 'From' : 'To';
-      div.innerHTML = `<span style='font-weight:bold;color:#007bff;'>${user}</span>` +
-        `<div style='color:#555;font-size:0.97em;margin-top:2px;'><b>${direction}:</b> ${last.message}</div>` +
+      div.innerHTML = `<a class='dm-user-link' href="/dms.html?user=${encodeURIComponent(user)}" style="font-weight:bold;color:#007bff;text-decoration:underline;cursor:pointer;">${user}</a>` +
+        `<div style='color:#555;font-size:0.97em;margin-top:2px;'><b>${last.from === user ? 'From' : 'To'}:</b> ${last.message}</div>` +
         `<div style='color:#aaa;font-size:0.9em;margin-top:2px;'>${new Date(last.time).toLocaleString()}</div>`;
+      div.onclick = (e) => {
+        if (e.target.classList.contains('dm-user-link')) return;
+        window.location.href = `/dms.html?user=${encodeURIComponent(user)}`;
+      };
       dmsDropdown.appendChild(div);
     });
   } catch (err) {
