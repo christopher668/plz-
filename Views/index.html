@@ -17,8 +17,31 @@
     <div style="max-width:900px;margin:0 auto;display:flex;align-items:center;">
       <a href="/index.html" style="color:#fff;text-decoration:none;font-size:1.2em;font-weight:bold;margin-right:32px;">Dashboard</a>
       <a href="/schedule.html" style="color:#fff;text-decoration:none;font-size:1.1em;margin-right:32px;">Schedule</a>
-      <a href="/profile.html" style="color:#fff;text-decoration:none;font-size:1.1em;">Profile</a>
+      <a href="/profile-settings.html" style="color:#fff;text-decoration:none;font-size:1.1em;">Profile</a>
+      <div id="recent-dms-nav" style="position:relative;margin-left:32px;">
+        <button id="recent-dms-btn" style="background:none;border:none;color:#fff;font-size:1.1em;cursor:pointer;">💬 Recent DMs</button>
+        <div id="recent-dms-dropdown" style="display:none;position:absolute;top:36px;right:0;min-width:260px;background:#fff;color:#222;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.18);z-index:9999;padding:8px 0;max-height:320px;overflow-y:auto;"></div>
+      </div>
       <button id="settings-btn" style="margin-left:auto; background:none; border:none; color:#fff; font-size:1.1em; cursor:pointer;">⚙️ Settings</button>
+      <div id="nav-avatar-link" style="margin-left:18px;display:flex;align-items:center;position:relative;cursor:pointer;">
+        <img id="nav-avatar" src="https://ui-avatars.com/api/?name=User&background=007bff&color=fff&rounded=true&size=40" alt="Profile" style="width:38px;height:38px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.10);object-fit:cover;transition:border-color 0.2s;">
+        <div id="avatar-dropdown" style="display:none;position:absolute;top:48px;right:0;min-width:180px;background:#fff;color:#222;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.18);z-index:9999;padding:8px 0;">
+          <a href="/profile-settings.html" style="display:block;padding:10px 24px;text-decoration:none;color:#222;font-size:1em;">Profile</a>
+          <div style="height:1px;background:#eee;margin:4px 0;"></div>
+          <button id="dropdown-settings-btn" style="display:block;width:100%;text-align:left;padding:10px 24px;background:none;border:none;color:#222;font-size:1em;cursor:pointer;">Settings</button>
+          <button id="dropdown-darkmode-btn" style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:10px 24px;background:none;border:none;color:#222;font-size:1em;cursor:pointer;">
+            <span>Dark Mode</span>
+            <input type="checkbox" id="dropdown-darkmode-toggle" style="transform:scale(1.2);margin-left:auto;">
+          </button>
+          <button id="dropdown-logout-btn" style="display:block;width:100%;text-align:left;padding:10px 24px;background:none;border:none;color:#d00;font-size:1em;cursor:pointer;">Log Out</button>
+          <button id="dropdown-view-reports-btn" style="display:none;width:100%;text-align:left;padding:10px 24px;background:none;border:none;color:#007bff;font-size:1em;cursor:pointer;">View Reports</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+  <!-- Profile Settings Modals -->
+        </div>
+      </div>
     </div>
   </nav>
   <div style="height:64px;"></div>
@@ -45,6 +68,115 @@
     </div>
   </div>
   <script>
+    // Recent DMs dropdown logic
+    const recentDmsBtn = document.getElementById('recent-dms-btn');
+    const recentDmsDropdown = document.getElementById('recent-dms-dropdown');
+    let recentDmsLoaded = false;
+    recentDmsBtn.onclick = async function(e) {
+      e.stopPropagation();
+      if (recentDmsDropdown.style.display === 'block') {
+        recentDmsDropdown.style.display = 'none';
+        return;
+      }
+      recentDmsDropdown.style.display = 'block';
+      if (!recentDmsLoaded) {
+        recentDmsDropdown.innerHTML = 'Loading...';
+        try {
+          const res = await fetch('/api/dm?user=all');
+          const dms = await res.json();
+          if (!dms.length) {
+            recentDmsDropdown.innerHTML = '<div style="padding:12px;color:#888;">No DMs yet.</div>';
+            return;
+          }
+          // Group by user
+          const userMap = {};
+          dms.forEach(dm => {
+            const currentUser = dms.currentUser || '';
+            const other = dm.from === currentUser ? dm.to : dm.from;
+            if (!userMap[other]) userMap[other] = [];
+            userMap[other].push(dm);
+          });
+          recentDmsDropdown.innerHTML = '';
+          Object.keys(userMap).forEach(user => {
+            const last = userMap[user][userMap[user].length-1];
+            const div = document.createElement('div');
+            div.className = 'dm-item';
+            div.style.padding = '10px 18px';
+            div.style.borderBottom = '1px solid #eee';
+            div.style.cursor = 'pointer';
+            div.onmouseover = () => div.style.background = '#f4f4f4';
+            div.onmouseout = () => div.style.background = '';
+            div.onclick = () => { window.location.href = `/dms.html?user=${encodeURIComponent(user)}`; };
+            div.innerHTML = `<span style='font-weight:bold;color:#007bff;'>${user}</span><div style='color:#555;font-size:0.97em;margin-top:2px;'>${last.message}</div><div style='color:#aaa;font-size:0.9em;margin-top:2px;'>${new Date(last.time).toLocaleString()}</div>`;
+            recentDmsDropdown.appendChild(div);
+          });
+          recentDmsLoaded = true;
+        } catch (err) {
+          recentDmsDropdown.innerHTML = '<div style="padding:12px;color:#d00;">Failed to load DMs.</div>';
+        }
+      } else {
+        // Already loaded, just show
+        recentDmsDropdown.style.display = 'block';
+      }
+    };
+    // Hide dropdown on outside click
+    document.addEventListener('click', function(e) {
+      if (recentDmsDropdown.style.display === 'block') recentDmsDropdown.style.display = 'none';
+    });
+    // Modal logic for settings modal dark mode toggle
+    const settingsModal = document.getElementById('settings-modal');
+    const closeSettings = document.getElementById('close-settings');
+    const darkModeToggle = document.getElementById('dark-mode-toggle');
+    closeSettings.onclick = () => { settingsModal.style.display = 'none'; };
+    settingsModal.onclick = e => { if (e.target === settingsModal) settingsModal.style.display = 'none'; };
+    darkModeToggle.onchange = e => setDarkMode(e.target.checked);
+    // On load, set dark mode if previously enabled
+    if (localStorage.getItem('darkMode') === '1') {
+      darkModeToggle.checked = true;
+      setDarkMode(true);
+    }
+    // Avatar dropdown logic
+    const navAvatarLink = document.getElementById('nav-avatar-link');
+    const avatarDropdown = document.getElementById('avatar-dropdown');
+    const dropdownDarkModeToggle = document.getElementById('dropdown-darkmode-toggle');
+    const dropdownDarkModeBtn = document.getElementById('dropdown-darkmode-btn');
+    const dropdownSettingsBtn = document.getElementById('dropdown-settings-btn');
+    const dropdownLogoutBtn = document.getElementById('dropdown-logout-btn');
+    const dropdownViewReportsBtn = document.getElementById('dropdown-view-reports-btn');
+    // Open/close dropdown
+    navAvatarLink.onclick = function(e) {
+      e.stopPropagation();
+      avatarDropdown.style.display = avatarDropdown.style.display === 'block' ? 'none' : 'block';
+      // Sync dark mode toggle
+      dropdownDarkModeToggle.checked = document.body.classList.contains('dark-mode');
+    };
+    // Close dropdown on outside click
+    document.addEventListener('click', function(e) {
+      if (avatarDropdown.style.display === 'block') avatarDropdown.style.display = 'none';
+    });
+    // Prevent dropdown from closing when clicking inside
+    avatarDropdown.onclick = function(e) { e.stopPropagation(); };
+    // Dark mode toggle in dropdown
+    dropdownDarkModeToggle.onchange = e => setDarkMode(e.target.checked);
+    // Settings button in dropdown
+    dropdownSettingsBtn.onclick = function() {
+      window.location.href = '/profile-settings.html';
+    };
+    // Log out button (placeholder)
+    dropdownLogoutBtn.onclick = function() {
+      // Log out: clear localStorage and redirect to sign-in page
+      localStorage.clear();
+      window.location.href = '/signin.html';
+    };
+    // Show 'View Reports' for dev
+    if (localStorage.getItem('dev') === '1') {
+      dropdownViewReportsBtn.style.display = 'block';
+    }
+    // View Reports modal logic
+    dropdownViewReportsBtn.onclick = function() {
+      showReportsModal();
+      avatarDropdown.style.display = 'none';
+    };
     // Dark mode logic
     function setDarkMode(enabled) {
       if (enabled) {
@@ -55,15 +187,9 @@
         localStorage.setItem('darkMode', '0');
       }
     }
-    // Modal logic
+    // Settings button in nav
     const settingsBtn = document.getElementById('settings-btn');
-    const settingsModal = document.getElementById('settings-modal');
-    const closeSettings = document.getElementById('close-settings');
-    const darkModeToggle = document.getElementById('dark-mode-toggle');
-    settingsBtn.onclick = () => { settingsModal.style.display = 'flex'; };
-    closeSettings.onclick = () => { settingsModal.style.display = 'none'; };
-    settingsModal.onclick = e => { if (e.target === settingsModal) settingsModal.style.display = 'none'; };
-    darkModeToggle.onchange = e => setDarkMode(e.target.checked);
+    settingsBtn.onclick = () => { window.location.href = '/profile-settings.html'; };
     // On load, set dark mode if previously enabled
     if (localStorage.getItem('darkMode') === '1') {
       darkModeToggle.checked = true;
@@ -95,6 +221,17 @@
       body.dark-mode #settings-modal > div {
         background: #23272a !important;
         color: #e0e0e0 !important;
+      }
+      body.dark-mode .message-bubble {
+        background: transparent !important;
+        color: #fff !important;
+        box-shadow: none !important;
+      }
+      .message-bubble p {
+        color: #222;
+      }
+      body.dark-mode .message-bubble p {
+        color: #fff !important;
       }
     `;
     document.head.appendChild(darkStyle);
@@ -139,12 +276,33 @@
       dmMenu.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
       dmMenu.style.zIndex = 2000;
       dmMenu.style.padding = '8px 0';
-      dmMenu.innerHTML = `<div style='padding:8px 24px;cursor:pointer;' id='dm-send'>Send DM to <b>${username}</b></div>`;
+      let html = `<div style='padding:8px 24px;cursor:pointer;' id='dm-send'>Send DM to <b>${username}</b></div>`;
+      const isDev = localStorage.getItem('dev') === '1';
+      if (isDev && username !== 'dev') {
+        html += `<div style='padding:8px 24px;cursor:pointer;color:#a00;' id='dm-suspend'>Suspend <b>${username}</b></div>`;
+      }
+      dmMenu.innerHTML = html;
       document.body.appendChild(dmMenu);
       document.getElementById('dm-send').onclick = () => {
-        showDmModal(username);
+        window.location.href = `/dms.html?user=${encodeURIComponent(username)}`;
         dmMenu.remove();
       };
+      if (isDev && username !== 'dev') {
+        document.getElementById('dm-suspend').onclick = () => {
+          if (!confirm('Suspend this user?')) return;
+          fetch('/api/suspend', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username })
+          }).then(res => res.json()).then(data => {
+            if (data.success) {
+              alert('User suspended.');
+            } else {
+              alert(data.message || 'Failed to suspend user.');
+            }
+          }).catch(() => alert('Network error.'));
+        };
+      }
       document.addEventListener('mousedown', hideDmMenu, { once: true });
     }
     function hideDmMenu(e) {
@@ -237,6 +395,7 @@
       const div = document.createElement('div');
       div.style.margin = '6px 0 6px 0';
       div.style.paddingLeft = msg.parentId ? '24px' : '0';
+      div.className = 'message-bubble';
       const p = document.createElement('p');
       // Username and message, timestamp on hover
       const userSpan = document.createElement('span');
@@ -247,16 +406,21 @@
       userSpan.style.cursor = 'pointer';
       userSpan.onclick = e => {
         e.stopPropagation();
-        showDmMenu(msg.username, e.clientX, e.clientY);
+        // Always go to DM screen directly for reliability
+        window.location.href = `/dms.html?user=${encodeURIComponent(msg.username)}`;
       };
       p.appendChild(userSpan);
       const msgSpan = document.createElement('span');
       msgSpan.textContent = msg.message;
       p.appendChild(msgSpan);
       p.title = new Date(msg.time).toLocaleString();
-      p.style.color = '#333';
+      p.style.color = '#222';
+      if (document.body.classList.contains('dark-mode')) {
+        p.style.color = '#fff';
+      }
       p.style.margin = '0';
       div.appendChild(p);
+      // Reply button
       const replyBtn = document.createElement('button');
       replyBtn.textContent = 'Reply';
       replyBtn.style.margin = '2px 0 0 8px';
@@ -273,6 +437,64 @@
         statusDiv.textContent = `Replying to message #${msg.id}`;
       };
       div.appendChild(replyBtn);
+
+      // Report button
+      const reportBtn = document.createElement('button');
+      reportBtn.textContent = 'Report';
+      reportBtn.style.margin = '2px 0 0 8px';
+      reportBtn.style.fontSize = '0.9em';
+      reportBtn.style.padding = '2px 8px';
+      reportBtn.style.borderRadius = '4px';
+      reportBtn.style.border = '1px solid #d00';
+      reportBtn.style.background = '#fff';
+      reportBtn.style.color = '#d00';
+      reportBtn.style.cursor = 'pointer';
+      reportBtn.onclick = () => {
+        const reason = prompt('Enter reason for reporting this user:');
+        if (!reason) return;
+        fetch('/api/report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: msg.username, reason })
+        }).then(res => res.json()).then(data => {
+          if (data.success) {
+            alert('User reported.');
+          } else {
+            alert(data.message || 'Failed to report user.');
+          }
+        }).catch(() => alert('Network error.'));
+      };
+      div.appendChild(reportBtn);
+
+      // Suspend button for dev accounts
+      const isDev = localStorage.getItem('dev') === '1';
+      if (isDev) {
+        const suspendBtn = document.createElement('button');
+        suspendBtn.textContent = 'Suspend';
+        suspendBtn.style.margin = '2px 0 0 8px';
+        suspendBtn.style.fontSize = '0.9em';
+        suspendBtn.style.padding = '2px 8px';
+        suspendBtn.style.borderRadius = '4px';
+        suspendBtn.style.border = '1px solid #a00';
+        suspendBtn.style.background = '#fff';
+        suspendBtn.style.color = '#a00';
+        suspendBtn.style.cursor = 'pointer';
+        suspendBtn.onclick = () => {
+          if (!confirm('Suspend this user?')) return;
+          fetch('/api/suspend', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: msg.username })
+          }).then(res => res.json()).then(data => {
+            if (data.success) {
+              alert('User suspended.');
+            } else {
+              alert(data.message || 'Failed to suspend user.');
+            }
+          }).catch(() => alert('Network error.'));
+        };
+        div.appendChild(suspendBtn);
+      }
       // Render replies
       if (msg.replies && msg.replies.length) {
         msg.replies.forEach(r => div.appendChild(renderMessageNode(r)));
@@ -338,6 +560,72 @@
     // Poll for new messages every 2 seconds
     setInterval(fetchMessages, 2000);
     fetchMessages();
+    // Reports modal for devs
+    function showReportsModal() {
+      let modal = document.getElementById('reports-modal');
+      if (modal) modal.remove();
+      modal = document.createElement('div');
+      modal.id = 'reports-modal';
+      modal.style.position = 'fixed';
+      modal.style.left = 0;
+      modal.style.top = 0;
+      modal.style.width = '100vw';
+      modal.style.height = '100vh';
+      modal.style.background = 'rgba(0,0,0,0.3)';
+      modal.style.zIndex = 4000;
+      modal.style.display = 'flex';
+      modal.style.alignItems = 'center';
+      modal.style.justifyContent = 'center';
+      modal.innerHTML = `
+        <div style="background:#fff; color:#222; padding:32px; border-radius:8px; min-width:340px; max-width:95vw; max-height:80vh; overflow-y:auto; box-shadow:0 2px 16px rgba(0,0,0,0.2); position:relative;">
+          <button id="close-reports-modal" style="position:absolute; top:8px; right:12px; background:none; border:none; font-size:1.3em; cursor:pointer;">✖️</button>
+          <h2 style="margin-top:0;">User Reports</h2>
+          <div id="reports-list">Loading...</div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      document.getElementById('close-reports-modal').onclick = () => { modal.remove(); };
+      fetch('/data/reports.json').then(r => r.json()).then(reports => {
+        const list = document.getElementById('reports-list');
+        if (!reports.length) { list.textContent = 'No reports.'; return; }
+        list.innerHTML = '';
+        reports.reverse().forEach(rep => {
+          const div = document.createElement('div');
+          div.style.borderBottom = '1px solid #eee';
+          div.style.padding = '8px 0';
+          div.innerHTML = `<b>${rep.reported}</b> reported by <b>${rep.from}</b><br><span style='color:#555'>${rep.reason}</span><br><span style='font-size:0.9em;color:#888'>${new Date(rep.time).toLocaleString()}</span>`;
+          // Suspend button
+          const suspendBtn = document.createElement('button');
+          suspendBtn.textContent = 'Suspend';
+          suspendBtn.style.margin = '4px 0 0 8px';
+          suspendBtn.style.fontSize = '0.9em';
+          suspendBtn.style.padding = '2px 8px';
+          suspendBtn.style.borderRadius = '4px';
+          suspendBtn.style.border = '1px solid #a00';
+          suspendBtn.style.background = '#fff';
+          suspendBtn.style.color = '#a00';
+          suspendBtn.style.cursor = 'pointer';
+          suspendBtn.onclick = () => {
+            if (!confirm('Suspend this user?')) return;
+            fetch('/api/suspend', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username: rep.reported })
+            }).then(res => res.json()).then(data => {
+              if (data.success) {
+                alert('User suspended.');
+              } else {
+                alert(data.message || 'Failed to suspend user.');
+              }
+            }).catch(() => alert('Network error.'));
+          };
+          div.appendChild(suspendBtn);
+          list.appendChild(div);
+        });
+      }).catch(() => {
+        document.getElementById('reports-list').textContent = 'Failed to load reports.';
+      });
+    }
   </script>
 </body>
 </html>

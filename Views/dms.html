@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Direct Messages</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #181a1b; color: #fff; margin: 0; }
+    nav { width:100%;background:#222;padding:16px 0 12px 0;position:fixed;top:0;left:0;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,0.08); }
+    nav div { max-width:900px;margin:0 auto;display:flex;align-items:center; }
+    nav a { color:#fff;text-decoration:none;font-size:1.1em;margin-right:32px; }
+    nav a:first-child { font-weight:bold; font-size:1.2em; }
+    .container { max-width:500px; margin:80px auto 0 auto; background:#23272a; padding:32px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+    h1 { text-align:center; color:#fff; }
+    .dm-list { margin-top:24px; }
+    .dm-item { padding:16px; border-bottom:1px solid #444; cursor:pointer; transition:background 0.2s; }
+    .dm-item:hover { background:#181a1b; }
+    .dm-username { font-weight:bold; color:#007bff; }
+    .dm-message { color:#e0e0e0; margin-top:4px; }
+    .dm-time { color:#aaa; font-size:0.9em; margin-top:2px; }
+  </style>
+</head>
+<body>
+  <nav>
+    <div>
+      <a href="/index.html">Dashboard</a>
+      <a href="/schedule.html">Schedule</a>
+      <a href="/profile-settings.html">Profile Settings</a>
+      <a href="/dms.html">DMs</a>
+    </div>
+  </nav>
+  <div class="container">
+    <h1 id="dm-title">Recent Direct Messages</h1>
+    <div class="dm-list" id="dm-list">Loading...</div>
+    <div id="dm-convo" style="display:none; margin-top:24px;"></div>
+    <form id="dm-form" style="display:none; margin-top:16px;">
+      <textarea id="dm-message" rows="2" style="width:100%; padding:8px; border-radius:4px; border:1px solid #888; background:#23272a; color:#fff;"></textarea>
+      <button type="submit" style="margin-top:8px; width:100%; padding:10px; background:#007bff; color:#fff; border:none; border-radius:4px; font-size:15px; cursor:pointer;">Send</button>
+      <div id="dm-status" style="margin-top:8px; color:#007bff; text-align:center;"></div>
+    </form>
+  </div>
+  <script>
+    function getQueryParam(name) {
+      const url = new URL(window.location.href);
+      return url.searchParams.get(name);
+    }
+
+    async function fetchRecentDMs() {
+      const res = await fetch('/api/dm?user=all');
+      const dms = await res.json();
+      const list = document.getElementById('dm-list');
+      if (!dms.length) {
+        list.textContent = 'No DMs yet.';
+        return;
+      }
+      // Group by user
+      const userMap = {};
+      dms.forEach(dm => {
+        const other = dm.from === dms.currentUser ? dm.to : dm.from;
+        if (!userMap[other]) userMap[other] = [];
+        userMap[other].push(dm);
+      });
+      list.innerHTML = '';
+      Object.keys(userMap).forEach(user => {
+        const last = userMap[user][userMap[user].length-1];
+        const div = document.createElement('div');
+        div.className = 'dm-item';
+        div.onclick = () => window.location.href = `/dms.html?user=${encodeURIComponent(user)}`;
+        div.innerHTML = `<span class="dm-username">${user}</span><div class="dm-message">${last.message}</div><div class="dm-time">${new Date(last.time).toLocaleString()}</div>`;
+        list.appendChild(div);
+      });
+    }
+
+    async function fetchDMConvo(user) {
+      document.getElementById('dm-title').textContent = `DM with ${user}`;
+      document.getElementById('dm-list').style.display = 'none';
+      document.getElementById('dm-convo').style.display = '';
+      document.getElementById('dm-form').style.display = '';
+      const convoDiv = document.getElementById('dm-convo');
+      convoDiv.innerHTML = 'Loading...';
+      const res = await fetch('/api/dm?user=' + encodeURIComponent(user));
+      const dms = await res.json();
+      convoDiv.innerHTML = '';
+      dms.forEach(dm => {
+        const p = document.createElement('div');
+        p.innerHTML = `<span class='dm-username'>${dm.from}</span>: <span class='dm-message'>${dm.message}</span> <span class='dm-time'>${new Date(dm.time).toLocaleTimeString()}</span>`;
+        convoDiv.appendChild(p);
+      });
+    }
+
+    const user = getQueryParam('user');
+    if (user) {
+      fetchDMConvo(user);
+      document.getElementById('dm-form').onsubmit = async function(e) {
+        e.preventDefault();
+        const msg = document.getElementById('dm-message').value.trim();
+        if (!msg) return;
+        document.getElementById('dm-status').textContent = 'Sending...';
+        try {
+          const res = await fetch('/api/dm', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ to: user, message: msg })
+          });
+          const data = await res.json();
+          if (data.success) {
+            document.getElementById('dm-status').textContent = 'Sent!';
+            document.getElementById('dm-form').reset();
+            await fetchDMConvo(user);
+          } else {
+            document.getElementById('dm-status').textContent = data.message || 'Failed to send.';
+          }
+        } catch (err) {
+          document.getElementById('dm-status').textContent = 'Network error.';
+        }
+      };
+    } else {
+      fetchRecentDMs();
+    }
+  </script>
+</body>
+</html>

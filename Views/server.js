@@ -57,6 +57,21 @@ const suspended = {};
 
 
 const server = http.createServer((req, res) => {
+  // Serve static HTML files from Views directory
+  if (req.url.includes('.html') && req.method === 'GET') {
+    // Remove query string
+    const cleanUrl = req.url.split('?')[0];
+    const filePath = path.join(__dirname, cleanUrl.replace(/^\//, ''));
+    if (fs.existsSync(filePath) && filePath.endsWith('.html')) {
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      fs.createReadStream(filePath).pipe(res);
+      return;
+    } else {
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      res.end('Not found');
+      return;
+    }
+  }
   // Handle sign-in POST
   if (req.url === '/api/signin' && req.method === 'POST') {
     let body = '';
@@ -168,7 +183,7 @@ const server = http.createServer((req, res) => {
         if (cookies.session && sessions[cookies.session]) {
           from = sessions[cookies.session].username;
         }
-        const reported = data.reported;
+        const reported = data.username; // frontend sends { username, reason }
         const reason = data.reason;
         if (!reported || !reason) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -202,7 +217,7 @@ const server = http.createServer((req, res) => {
           res.end(JSON.stringify({ success: false, message: 'Only dev can suspend.' }));
           return;
         }
-        const user = data.user;
+        const user = data.username; // frontend sends { username }
         if (!user) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: false, message: 'User required.' }));
