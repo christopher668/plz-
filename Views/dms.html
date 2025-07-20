@@ -91,9 +91,11 @@
     const user = getQueryParam('user');
     if (user) {
       fetchDMConvo(user);
-      document.getElementById('dm-form').onsubmit = async function(e) {
+      const dmForm = document.getElementById('dm-form');
+      const dmMessage = document.getElementById('dm-message');
+      dmForm.onsubmit = async function(e) {
         e.preventDefault();
-        const msg = document.getElementById('dm-message').value.trim();
+        const msg = dmMessage.value.trim();
         if (!msg) return;
         document.getElementById('dm-status').textContent = 'Sending...';
         try {
@@ -105,8 +107,10 @@
           const data = await res.json();
           if (data.success) {
             document.getElementById('dm-status').textContent = 'Sent!';
-            document.getElementById('dm-form').reset();
+            dmForm.reset();
             await fetchDMConvo(user);
+            // Also update recent DMs list if present
+            if (window.fetchRecentDMs) fetchRecentDMs();
           } else {
             document.getElementById('dm-status').textContent = data.message || 'Failed to send.';
           }
@@ -114,8 +118,17 @@
           document.getElementById('dm-status').textContent = 'Network error.';
         }
       };
+      // Send on Enter (without Shift)
+      dmMessage.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          dmForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+        }
+      });
     } else {
       fetchRecentDMs();
+      // Expose for refresh after sending
+      window.fetchRecentDMs = fetchRecentDMs;
     }
   </script>
 </body>

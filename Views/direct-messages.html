@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Direct Messages</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    body { background: #f4f4f4; font-family: Arial, sans-serif; margin: 0; }
+    .container { max-width: 700px; margin: 80px auto 0 auto; background: #fff; padding: 32px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    h1 { color: #333; }
+    .dm-list { margin-top: 24px; }
+    .dm-item { padding: 16px 0; border-bottom: 1px solid #eee; cursor: pointer; }
+    .dm-item:last-child { border-bottom: none; }
+    .dm-item:hover { background: #f4f4f4; }
+    .dm-user { font-weight: bold; color: #007bff; }
+    .dm-message { color: #555; font-size: 1em; margin-top: 2px; }
+    .dm-time { color: #aaa; font-size: 0.9em; margin-top: 2px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Direct Messages</h1>
+    <div id="dm-list" class="dm-list">Loading...</div>
+  </div>
+  <script>
+    async function loadDMs() {
+      const dmList = document.getElementById('dm-list');
+      dmList.innerHTML = 'Loading...';
+      try {
+        const res = await fetch('/api/dm-conversations');
+        const conversations = await res.json();
+        if (!conversations.length) {
+          dmList.innerHTML = '<div style="color:#888;">No DMs yet.</div>';
+          return;
+        }
+        dmList.innerHTML = '';
+        conversations.forEach(convo => {
+          const user = convo.user;
+          const last = convo.lastMessage;
+          const div = document.createElement('div');
+          div.className = 'dm-item';
+          div.onclick = () => { window.location.href = `/dms.html?user=${encodeURIComponent(user)}`; };
+          div.innerHTML = `<span class='dm-user'>${user}</span>` +
+            `<div class='dm-message'><b>${last.from === user ? 'From' : 'To'}:</b> ${last.message}</div>` +
+            `<div class='dm-time'>${new Date(last.time).toLocaleString()}</div>`;
+          dmList.appendChild(div);
+        });
+      } catch (err) {
+        dmList.innerHTML = '<div style="color:#d00;">Failed to load DMs.</div>';
+      }
+    }
+    loadDMs();
+  </script>
+</body>
+</html>

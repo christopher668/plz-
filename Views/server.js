@@ -1,4 +1,5 @@
-// Simple static server for Views directory
+
+// Ensure required modules are loaded at the top
 const http = require('http');
 const fs = require('fs');
 const path = require('path');

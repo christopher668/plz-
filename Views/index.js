@@ -32,8 +32,10 @@ function navLink(text, href, extraStyle) {
   if (extraStyle) Object.assign(a.style, extraStyle);
   return a;
 }
+const dmsNavLink = navLink('DMs', '/direct-messages.html');
 navDiv.appendChild(navLink('Dashboard', '/index.html', {fontWeight:'bold',fontSize:'1.2em'}));
 navDiv.appendChild(navLink('Schedule', '/schedule.html'));
+navDiv.appendChild(dmsNavLink);
 navDiv.appendChild(navLink('Profile', '/profile-settings.html'));
 
 // Recent DMs dropdown
@@ -101,14 +103,20 @@ avatarDropdown.style.boxShadow = '0 2px 12px rgba(0,0,0,0.18)';
 avatarDropdown.style.zIndex = '9999';
 avatarDropdown.style.padding = '8px 0';
 avatarDropdown.innerHTML = `
-  <a href="/profile-settings.html" style="display:block;padding:10px 24px;text-decoration:none;color:#222;font-size:1em;">Profile</a>
+  <style>
+    #avatar-dropdown, #avatar-dropdown * { color: #fff !important; background: none !important; }
+    #avatar-dropdown button { color: #fff !important; }
+    #avatar-dropdown a { color: #fff !important; }
+    #avatar-dropdown button#dropdown-logout-btn { color: #d00 !important; }
+  </style>
+  <a href="/profile-settings.html" style="display:block;padding:10px 24px;text-decoration:none;color:#fff !important;font-size:1em;">Profile</a>
   <div style="height:1px;background:#eee;margin:4px 0;"></div>
-  <button id="dropdown-settings-btn" style="display:block;width:100%;text-align:left;padding:10px 24px;background:none;border:none;color:#222;font-size:1em;cursor:pointer;">Settings</button>
-  <button id="dropdown-darkmode-btn" style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:10px 24px;background:none;border:none;color:#222;font-size:1em;cursor:pointer;">
+  <button id="dropdown-settings-btn" style="display:block;width:100%;text-align:left;padding:10px 24px;background:none;border:none;color:#fff !important;font-size:1em;cursor:pointer;">Settings</button>
+  <button id="dropdown-darkmode-btn" style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:10px 24px;background:none;border:none;color:#fff !important;font-size:1em;cursor:pointer;">
     <span>Dark Mode</span>
     <input type="checkbox" id="dropdown-darkmode-toggle" style="transform:scale(1.2);margin-left:auto;">
   </button>
-  <button id="dropdown-logout-btn" style="display:block;width:100%;text-align:left;padding:10px 24px;background:none;border:none;color:#d00;font-size:1em;cursor:pointer;">Log Out</button>
+  <button id="dropdown-logout-btn" style="display:block;width:100%;text-align:left;padding:10px 24px;background:none;border:none;color:#d00 !important;font-size:1em;cursor:pointer;">Log Out</button>
 `;
 navAvatarLink.appendChild(navAvatar);
 navAvatarLink.appendChild(avatarDropdown);
@@ -157,33 +165,21 @@ if (localStorage.getItem('darkMode') === '1') {
   setDarkMode(true);
 }
 
-// Recent DMs dropdown logic
-dmsBtn.onclick = async function(e) {
-  e.stopPropagation();
-  if (dmsDropdown.style.display === 'block') {
-    dmsDropdown.style.display = 'none';
-    return;
-  }
-  dmsDropdown.style.display = 'block';
+
+// Recent DMs dropdown logic with polling
+async function loadRecentDMsDropdown() {
   dmsDropdown.innerHTML = 'Loading...';
   try {
-    const res = await fetch('/api/dm?user=all');
-    const dms = await res.json();
-    if (!dms.length) {
+    const res = await fetch('/api/dm-conversations');
+    const conversations = await res.json();
+    if (!conversations.length) {
       dmsDropdown.innerHTML = '<div style="padding:12px;color:#888;">No DMs yet.</div>';
       return;
     }
-    // Group by user
-    const userMap = {};
-    dms.forEach(dm => {
-      const currentUser = dms.currentUser || '';
-      const other = dm.from === currentUser ? dm.to : dm.from;
-      if (!userMap[other]) userMap[other] = [];
-      userMap[other].push(dm);
-    });
     dmsDropdown.innerHTML = '';
-    Object.keys(userMap).forEach(user => {
-      const last = userMap[user][userMap[user].length-1];
+    conversations.forEach(convo => {
+      const user = convo.user;
+      const last = convo.lastMessage;
       const div = document.createElement('div');
       div.className = 'dm-item';
       div.style.padding = '10px 18px';
@@ -192,13 +188,28 @@ dmsBtn.onclick = async function(e) {
       div.onmouseover = () => div.style.background = '#f4f4f4';
       div.onmouseout = () => div.style.background = '';
       div.onclick = () => { window.location.href = `/dms.html?user=${encodeURIComponent(user)}`; };
-      div.innerHTML = `<span style='font-weight:bold;color:#007bff;'>${user}</span><div style='color:#555;font-size:0.97em;margin-top:2px;'>${last.message}</div><div style='color:#aaa;font-size:0.9em;margin-top:2px;'>${new Date(last.time).toLocaleString()}</div>`;
+      const direction = last.from === user ? 'From' : 'To';
+      div.innerHTML = `<span style='font-weight:bold;color:#007bff;'>${user}</span>` +
+        `<div style='color:#555;font-size:0.97em;margin-top:2px;'><b>${direction}:</b> ${last.message}</div>` +
+        `<div style='color:#aaa;font-size:0.9em;margin-top:2px;'>${new Date(last.time).toLocaleString()}</div>`;
       dmsDropdown.appendChild(div);
     });
   } catch (err) {
     dmsDropdown.innerHTML = '<div style="padding:12px;color:#d00;">Failed to load DMs.</div>';
   }
+}
+
+dmsBtn.onclick = function(e) {
+  e.stopPropagation();
+  window.location.href = '/direct-messages.html';
 };
+
+// Poll for new DMs every 5 seconds (if dropdown is open)
+setInterval(() => {
+  if (dmsDropdown.style.display === 'block') {
+    loadRecentDMsDropdown();
+  }
+}, 5000);
 
 // Add main content
 const container = document.createElement('div');
