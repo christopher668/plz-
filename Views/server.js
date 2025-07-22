@@ -9,14 +9,26 @@ const DATA_DIR = path.join(__dirname, 'data');
 const DM_FILE = path.join(DATA_DIR, 'dms.json');
 const REPORT_FILE = path.join(DATA_DIR, 'reports.json');
 const SUSPEND_FILE = path.join(DATA_DIR, 'suspended.json');
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
 if (!fs.existsSync(DM_FILE)) fs.writeFileSync(DM_FILE, '[]');
 if (!fs.existsSync(REPORT_FILE)) fs.writeFileSync(REPORT_FILE, '[]');
 if (!fs.existsSync(SUSPEND_FILE)) fs.writeFileSync(SUSPEND_FILE, '{}');
+if (!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE, '[]');
 
 function readDMs() {
   return JSON.parse(fs.readFileSync(DM_FILE, 'utf8'));
+}
+function readUsers() {
+  return JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
+}
+function writeUsers(users) {
+  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+}
+// Helper to validate hfca.org email
+function isHfcaEmail(email) {
+  return typeof email === 'string' && /^[^@\s]+@hfca\.org$/.test(email);
 }
 function writeDMs(dms) {
   fs.writeFileSync(DM_FILE, JSON.stringify(dms, null, 2));
@@ -73,6 +85,49 @@ const server = http.createServer((req, res) => {
       return;
     }
   }
+
+  // Registration endpoint (demo, extend as needed)
+  if (req.url === '/api/register' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        const data = JSON.parse(body);
+        const username = data.username;
+        const email = data.email;
+        const password = data.password;
+        if (!username || !email || !password) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, message: 'All fields required.' }));
+          return;
+        }
+        if (!isHfcaEmail(email)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, message: 'Only official hfca.org emails allowed.' }));
+          return;
+        }
+        let users = readUsers();
+        if (users.find(u => u.username === username)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, message: 'Username already exists.' }));
+          return;
+        }
+        if (users.find(u => u.email === email)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, message: 'Email already registered.' }));
+          return;
+        }
+        users.push({ username, email, password });
+        writeUsers(users);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, message: 'Registration successful.' }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, message: 'Bad request' }));
+      }
+    });
+    return;
+  }
   // Handle sign-in POST
   if (req.url === '/api/signin' && req.method === 'POST') {
     let body = '';
@@ -80,11 +135,26 @@ const server = http.createServer((req, res) => {
     req.on('end', () => {
       try {
         const data = JSON.parse(body);
+        const username = data.username;
+        const email = data.email;
+        const password = data.password;
         let user = null;
-        if (data.username === USER.username && data.password === USER.password) {
-          user = USER;
-        } else if (data.username === DEV.username && data.password === DEV.password) {
-          user = DEV;
+        // Only allow sign-in for official hfca.org emails
+        if (!isHfcaEmail(email)) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, message: 'Only official hfca.org emails allowed.' }));
+          return;
+        }
+        // Check against registered users
+        let users = readUsers();
+        user = users.find(u => u.username === username && u.email === email && u.password === password);
+        // Demo: check against USER and DEV
+        if (!user) {
+          if (username === USER.username && email === 'user@hfca.org' && password === USER.password) {
+            user = USER;
+          } else if (username === DEV.username && email === 'dev@hfca.org' && password === DEV.password) {
+            user = DEV;
+          }
         }
         // Block suspended users from logging in (file-based)
         if (user) {

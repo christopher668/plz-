@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sign In</title>
   <style>
-    body { background: #f4f4f4; font-family: Arial, sans-serif; margin: 0; padding: 0; }
+body { background: #fff; font-family: Arial, sans-serif; margin: 0; padding: 0; }
     .container { max-width: 400px; margin: 80px auto; background: #fff; padding: 32px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
     h2 { text-align: center; color: #333; }
     label { display: block; margin-top: 16px; color: #555; }
-    input[type="text"], input[type="password"] { width: 100%; padding: 10px; margin-top: 6px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    input[type="text"], input[type="email"], input[type="password"] { width: 100%; padding: 10px; margin-top: 6px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
     button { width: 100%; padding: 12px; margin-top: 24px; background: #007bff; color: #fff; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; transition: background 0.2s; }
     button:hover { background: #0056b3; }
     .error { color: #d00; margin-top: 12px; text-align: center; }
@@ -21,13 +21,21 @@
   </style>
 </head>
 <body>
+  <div style="position:fixed;top:24px;right:32px;z-index:1000;">
+    <a href="/signup.html" style="background:#007bff;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:bold;box-shadow:0 2px 8px rgba(0,0,0,0.08);transition:background 0.2s;">Sign Up</a>
+  </div>
   <div class="container">
     <h2>Sign In</h2>
     <form id="signin-form">
       <label for="username">Username</label>
       <input type="text" id="username" name="username" required>
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" required>
       <label for="password">Password</label>
       <input type="password" id="password" name="password" required>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+        <input type="checkbox" id="show-password"> Show password
+      </label>
       <button type="submit">Sign In</button>
       <div class="error" id="error-msg"></div>
     </form>
@@ -38,6 +46,12 @@
     </div>
   </div>
   <script src="signin.js"></script>
+  <script>
+    document.getElementById('show-password').onchange = function() {
+      const pw = document.getElementById('password');
+      pw.type = this.checked ? 'text' : 'password';
+    };
+  </script>
   <script>
     // Dark mode logic for sign-in
     function setDarkMode(enabled) {
