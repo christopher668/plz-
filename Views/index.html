@@ -1,6 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<style>
+body.dark-mode { background: #181a1b !important; color: #e0e0e0 !important; }
+.container, .navbar, .nav { background: #23272a !important; color: #e0e0e0 !important; }
+input, textarea, button { background: #222 !important; color: #e0e0e0 !important; border-color: #444 !important; }
+</style>
+<style>
+body.dark-mode { background: #111; color: #eee; }
+.navbar, .nav { background: #222 !important; color: #eee !important; }
+button, input, textarea { background: #222; color: #eee; border: 1px solid #444; }
+</style>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HFCA Group Chat</title>
@@ -13,13 +23,18 @@
   <meta property="og:site_name" content="HFCA Group Chat" />
 </head>
 <body>
+<div style="position:fixed;top:16px;right:24px;z-index:1000;">
+  <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+    <input type="checkbox" id="dark-mode-toggle" style="transform:scale(1.2);"> Dark Mode
+  </label>
+</div>
   <nav style="width:100%;background:#222;padding:16px 0 12px 0;position:fixed;top:0;left:0;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
     <div style="max-width:900px;margin:0 auto;display:flex;align-items:center;">
       <a href="/index.html" style="color:#fff;text-decoration:none;font-size:1.2em;font-weight:bold;margin-right:32px;">Dashboard</a>
       <a href="/schedule.html" style="color:#fff;text-decoration:none;font-size:1.1em;margin-right:32px;">Schedule</a>
       <a href="/profile-settings.html" style="color:#fff;text-decoration:none;font-size:1.1em;">Profile</a>
       <div id="recent-dms-nav" style="position:relative;margin-left:32px;">
-        <button id="recent-dms-btn" style="background:none;border:none;color:#fff;font-size:1.1em;cursor:pointer;">💬 Recent DMs</button>
+        <button id="recent-dms-btn" style="background:none;border:none;color:#fff;font-size:1.1em;cursor:pointer;">Recent DMs</button>
         <div id="recent-dms-dropdown" style="display:none;position:absolute;top:36px;right:0;min-width:260px;background:#fff;color:#222;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.18);z-index:9999;padding:8px 0;max-height:320px;overflow-y:auto;"></div>
       </div>
       <button id="settings-btn" style="margin-left:auto; background:none; border:none; color:#fff; font-size:1.1em; cursor:pointer;">⚙️ Settings</button>
@@ -68,6 +83,34 @@
     </div>
   </div>
   <script>
+// Dark mode logic
+function applyDarkMode() {
+  const enabled = localStorage.getItem('darkMode') === 'true';
+  document.body.classList.toggle('dark-mode', enabled);
+  const toggle = document.getElementById('dark-mode-toggle');
+  if (toggle) toggle.checked = enabled;
+}
+applyDarkMode();
+document.getElementById('dark-mode-toggle').onchange = function(e) {
+  localStorage.setItem('darkMode', e.target.checked ? 'true' : 'false');
+  applyDarkMode();
+};
+window.addEventListener('storage', function(e) {
+  if (e.key === 'darkMode') applyDarkMode();
+});
+function applyDarkMode() {
+  const enabled = localStorage.getItem('darkMode') === 'true';
+  document.body.classList.toggle('dark-mode', enabled);
+  // Sync both toggles
+  const darkModeToggle = document.getElementById('dark-mode-toggle');
+  const dropdownDarkModeToggle = document.getElementById('dropdown-darkmode-toggle');
+  if (darkModeToggle) darkModeToggle.checked = enabled;
+  if (dropdownDarkModeToggle) dropdownDarkModeToggle.checked = enabled;
+}
+applyDarkMode();
+window.addEventListener('storage', function(e) {
+  if (e.key === 'darkMode') applyDarkMode();
+});
     // Recent DMs dropdown logic
     const recentDmsBtn = document.getElementById('recent-dms-btn');
     const recentDmsDropdown = document.getElementById('recent-dms-dropdown');
@@ -129,12 +172,10 @@
     const darkModeToggle = document.getElementById('dark-mode-toggle');
     closeSettings.onclick = () => { settingsModal.style.display = 'none'; };
     settingsModal.onclick = e => { if (e.target === settingsModal) settingsModal.style.display = 'none'; };
-    darkModeToggle.onchange = e => setDarkMode(e.target.checked);
-    // On load, set dark mode if previously enabled
-    if (localStorage.getItem('darkMode') === '1') {
-      darkModeToggle.checked = true;
-      setDarkMode(true);
-    }
+    darkModeToggle.onchange = e => {
+      localStorage.setItem('darkMode', e.target.checked ? 'true' : 'false');
+      applyDarkMode();
+    };
     // Avatar dropdown logic
     const navAvatarLink = document.getElementById('nav-avatar-link');
     const avatarDropdown = document.getElementById('avatar-dropdown');
@@ -157,7 +198,10 @@
     // Prevent dropdown from closing when clicking inside
     avatarDropdown.onclick = function(e) { e.stopPropagation(); };
     // Dark mode toggle in dropdown
-    dropdownDarkModeToggle.onchange = e => setDarkMode(e.target.checked);
+    dropdownDarkModeToggle.onchange = e => {
+      localStorage.setItem('darkMode', e.target.checked ? 'true' : 'false');
+      applyDarkMode();
+    };
     // Settings button in dropdown
     dropdownSettingsBtn.onclick = function() {
       window.location.href = '/profile-settings.html';
@@ -177,16 +221,7 @@
       showReportsModal();
       avatarDropdown.style.display = 'none';
     };
-    // Dark mode logic
-    function setDarkMode(enabled) {
-      if (enabled) {
-        document.body.classList.add('dark-mode');
-        localStorage.setItem('darkMode', '1');
-      } else {
-        document.body.classList.remove('dark-mode');
-        localStorage.setItem('darkMode', '0');
-      }
-    }
+    // Remove unused setDarkMode function
     // Settings button in nav
     const settingsBtn = document.getElementById('settings-btn');
     settingsBtn.onclick = () => { window.location.href = '/profile-settings.html'; };

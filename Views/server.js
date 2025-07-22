@@ -59,7 +59,7 @@ const messages = [];
 let nextMessageId = 1;
 
 // In-memory DM store: { [user1_user2]: [ { from, to, message, time } ] }
-const dms = {};
+// ...existing code...
 
 // In-memory report store: { id, from, reported, reason, time }
 const reports = [];
@@ -350,20 +350,29 @@ const server = http.createServer((req, res) => {
   // Handle DM GET (query: ?user=username)
   if (req.url.startsWith('/api/dm?user=') && req.method === 'GET') {
     // Get current user from session
-    let from = 'Anonymous';
+    let currentUser = 'Anonymous';
     const cookies = parseCookies(req.headers.cookie);
     if (cookies.session && sessions[cookies.session]) {
-      from = sessions[cookies.session].username;
+      currentUser = sessions[cookies.session].username;
     }
-    const to = decodeURIComponent(req.url.split('=')[1] || '');
-    // Find all DMs between from and to
+    const userParam = decodeURIComponent(req.url.split('=')[1] || '');
     const dms = readDMs();
-    const convo = dms.filter(dm =>
-      (dm.from === from && dm.to === to) || (dm.from === to && dm.to === from)
-    ).sort((a, b) => new Date(a.time) - new Date(b.time));
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(convo));
-    return;
+    if (userParam === 'all') {
+      // Return all DMs where currentUser is either sender or receiver
+      const userDms = dms.filter(dm => dm.from === currentUser || dm.to === currentUser);
+      // Attach currentUser for frontend grouping
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify([...userDms, { currentUser }]));
+      return;
+    } else {
+      // Find all DMs between currentUser and userParam
+      const convo = dms.filter(dm =>
+        (dm.from === currentUser && dm.to === userParam) || (dm.from === userParam && dm.to === currentUser)
+      ).sort((a, b) => new Date(a.time) - new Date(b.time));
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(convo));
+      return;
+    }
   }
 
   // Serve static files from Views directory
@@ -419,6 +428,23 @@ function generateSessionId() {
 }
 
 // ...existing code...
+// Scheduled group chat reset at 3am every day
+function scheduleGroupChatReset() {
+  const now = new Date();
+  const next3am = new Date(now);
+  next3am.setHours(3, 0, 0, 0);
+  if (now > next3am) next3am.setDate(next3am.getDate() + 1);
+  const msUntil3am = next3am - now;
+  setTimeout(() => {
+    // Clear messages array and optionally persist if needed
+    messages.length = 0;
+    // If you want to persist, write to a file here
+    // Schedule next reset
+    scheduleGroupChatReset();
+    console.log('Group chat reset at 3am');
+  }, msUntil3am);
+}
+scheduleGroupChatReset();
 
 function loadDmMessages(username) {
   const dmMessagesDiv = document.getElementById('dm-messages');
@@ -449,16 +475,6 @@ function appendDmMessage(dm) {
 // <div id="dm-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:10000;">
 //   <div style="background:#fff; color:#222; padding:32px; border-radius:8px; min-width:320px; max-width:90vw; box-shadow:0 2px 16px rgba(0,0,0,0.2); position:relative;">
 //     <button id="close-dm-modal" style="position:absolute; top:8px; right:12px; background:none; border:none; font-size:1.3em; cursor:pointer;">✖️</button>
-//     <h2 style="margin-top:0;">DM with <span id="dm-username"></span></h2>
-//     <div id="dm-messages" style="max-height:200px; overflow-y:auto; background:#f4f4f4; padding:12px; border-radius:6px; margin-bottom:12px;"></div>
-//     <form id="dm-form">
-//       <textarea id="dm-message" rows="2" style="width:100%; padding:8px; border-radius:4px; border:1px solid #ccc;"></textarea>
-//       <button type="submit" style="margin-top:8px; width:100%; padding:10px; background:#007bff; color:#fff; border:none; border-radius:4px; font-size:15px; cursor:pointer;">Send</button>
-//       <div id="dm-status" style="margin-top:8px; color:#007bff; text-align:center;"></div>
-//     </form>
-//     <div id="suspend-user-div" style="margin-top:16px;"></div>
-//   </div>
-// </div>
 
 // (Client-side suspend button code removed from server file)
 

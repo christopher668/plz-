@@ -1,6 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<style>
+body.dark-mode { background: #181a1b !important; color: #e0e0e0 !important; }
+.container, .navbar, .nav { background: #23272a !important; color: #e0e0e0 !important; }
+input, textarea, button { background: #222 !important; color: #e0e0e0 !important; border-color: #444 !important; }
+</style>
+<style>
+body.dark-mode { background: #181a1b !important; color: #e0e0e0 !important; }
+.container, .navbar, .nav { background: #23272a !important; color: #e0e0e0 !important; }
+input, textarea, button { background: #222 !important; color: #e0e0e0 !important; border-color: #444 !important; }
+</style>
+<style>
+body.dark-mode { background: #111; color: #eee; }
+.dm-message { background: #222; color: #eee; }
+/* Dark mode styles removed */
+</style>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Direct Messages</title>
@@ -21,6 +36,16 @@
   </style>
 </head>
 <body>
+<div style="position:fixed;top:16px;right:24px;z-index:1000;">
+  <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+    <input type="checkbox" id="dark-mode-toggle" style="transform:scale(1.2);"> Dark Mode
+  </label>
+</div>
+<div style="position:fixed;top:16px;right:24px;z-index:1000;">
+  <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+    <input type="checkbox" id="dark-mode-toggle" style="transform:scale(1.2);"> Dark Mode
+  </label>
+</div>
   <nav>
     <div>
       <a href="/index.html">Dashboard</a>
@@ -40,6 +65,37 @@
     </form>
   </div>
   <script>
+// Dark mode logic
+function applyDarkMode() {
+  const enabled = localStorage.getItem('darkMode') === 'true';
+  document.body.classList.toggle('dark-mode', enabled);
+  const toggle = document.getElementById('dark-mode-toggle');
+  if (toggle) toggle.checked = enabled;
+}
+applyDarkMode();
+document.getElementById('dark-mode-toggle').onchange = function(e) {
+  localStorage.setItem('darkMode', e.target.checked ? 'true' : 'false');
+  applyDarkMode();
+};
+window.addEventListener('storage', function(e) {
+  if (e.key === 'darkMode') applyDarkMode();
+});
+// Dark mode logic
+function applyDarkMode() {
+  const enabled = localStorage.getItem('darkMode') === 'true';
+  document.body.classList.toggle('dark-mode', enabled);
+  const toggle = document.getElementById('dark-mode-toggle');
+  if (toggle) toggle.checked = enabled;
+}
+applyDarkMode();
+document.getElementById('dark-mode-toggle').onchange = function(e) {
+  localStorage.setItem('darkMode', e.target.checked ? 'true' : 'false');
+  applyDarkMode();
+};
+window.addEventListener('storage', function(e) {
+  if (e.key === 'darkMode') applyDarkMode();
+});
+// Dark mode functionality removed
     function getQueryParam(name) {
       const url = new URL(window.location.href);
       return url.searchParams.get(name);
