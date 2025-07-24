@@ -1,5 +1,11 @@
 
-// Ensure required modules are loaded at the top
+// Placeholder for admin special code
+const ADMIN_SPECIAL_CODE = 'ADMIN-CODE'; // Change this later
+
+// ...existing code...
+
+// Main request handler
+// ...existing code...
 const http = require('http');
 const fs = require('fs');
 const path = require('path');

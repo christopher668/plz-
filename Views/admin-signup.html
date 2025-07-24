@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Administrator Sign Up</title>
+  <style>
+    body { background: #fff; font-family: Arial, sans-serif; margin: 0; padding: 0; }
+    .container { max-width: 400px; margin: 80px auto; background: #fff; padding: 32px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    h2 { text-align: center; color: #333; }
+    label { display: block; margin-top: 16px; color: #555; }
+    input[type="text"], input[type="email"], input[type="password"] { width: 100%; padding: 10px; margin-top: 6px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    button { width: 100%; padding: 12px; margin-top: 24px; background: #007bff; color: #fff; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; transition: background 0.2s; }
+    button:hover { background: #0056b3; }
+    .error { color: #d00; margin-top: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Administrator Sign Up</h2>
+    <form id="admin-signup-form">
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username" required>
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" required>
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" required>
+      <label for="special-code">Special Code</label>
+      <input type="text" id="special-code" name="special-code" required>
+      <button type="submit">Sign Up</button>
+      <div class="error" id="error-msg"></div>
+    </form>
+  </div>
+  <script>
+    document.getElementById('admin-signup-form').onsubmit = async function(e) {
+      e.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const specialCode = document.getElementById('special-code').value.trim();
+      const errorMsg = document.getElementById('error-msg');
+      errorMsg.textContent = '';
+      try {
+        const res = await fetch('/api/admin-register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, email, password, specialCode })
+        });
+        const data = await res.json();
+        if (data.success) {
+          window.location.href = '/admin-signin.html';
+        } else {
+          errorMsg.textContent = data.message || 'Sign up failed.';
+        }
+      } catch (err) {
+        errorMsg.textContent = 'Network error.';
+      }
+    };
+  </script>
+</body>
+</html>
