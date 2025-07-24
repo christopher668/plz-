@@ -3,66 +3,84 @@
     "from": "dev",
     "to": "user",
     "message": "be quite",
-    "time": "2025-07-20T04:39:36.974Z"
+    "time": "2025-07-20T04:39:36.974Z",
+    "role": "administrator"
   },
   {
     "from": "dev",
     "to": "user",
     "message": "yo",
-    "time": "2025-07-20T04:42:43.905Z"
+    "time": "2025-07-20T04:42:43.905Z",
+    "role": "administrator"
   },
   {
     "from": "user",
     "to": "user",
     "message": "yo",
-    "time": "2025-07-20T14:42:01.469Z"
+    "time": "2025-07-20T14:42:01.469Z",
+    "role": "student"
   },
   {
     "from": "dev",
     "to": "user",
     "message": "yo",
-    "time": "2025-07-20T14:46:43.086Z"
+    "time": "2025-07-20T14:46:43.086Z",
+    "role": "administrator"
   },
   {
     "from": "user",
     "to": "user",
     "message": "wyd",
-    "time": "2025-07-20T14:50:13.530Z"
+    "time": "2025-07-20T14:50:13.530Z",
+    "role": "student"
   },
   {
     "from": "user",
     "to": "dev",
     "message": "who aree you talking to",
-    "time": "2025-07-20T14:55:09.346Z"
+    "time": "2025-07-20T14:55:09.346Z",
+    "role": "student"
   },
   {
     "from": "user",
     "to": "user",
     "message": "yo",
-    "time": "2025-07-20T15:03:28.327Z"
+    "time": "2025-07-20T15:03:28.327Z",
+    "role": "student"
   },
   {
     "from": "user",
     "to": "user",
     "message": "hmm",
-    "time": "2025-07-20T15:05:24.994Z"
+    "time": "2025-07-20T15:05:24.994Z",
+    "role": "student"
   },
   {
     "from": "user",
     "to": "user",
     "message": "ve",
-    "time": "2025-07-20T15:09:29.112Z"
+    "time": "2025-07-20T15:09:29.112Z",
+    "role": "student"
   },
   {
     "from": "user",
     "to": "user",
     "message": "yo",
-    "time": "2025-07-20T15:18:45.165Z"
+    "time": "2025-07-20T15:18:45.165Z",
+    "role": "student"
   },
   {
     "from": "Christopher Harston",
     "to": "Christopher Harston",
     "message": "hv",
-    "time": "2025-07-22T16:46:02.790Z"
+    "time": "2025-07-22T16:46:02.790Z",
+    "role": "student"
+  },
+  {
+    "from": "Christopher Harston",
+    "to": "Christopher Harston",
+    "message": "dcg",
+    "time": "2025-07-22T17:32:08.584Z",
+    "role": "student"
   }
 ]

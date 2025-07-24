@@ -28,6 +28,7 @@ body { background: #fff; font-family: Arial, sans-serif; margin: 0; padding: 0; 
   </style>
 </head>
 <body>
+<div id="role-indicator" style="position:fixed;top:16px;left:24px;z-index:1000;display:flex;align-items:center;gap:8px;font-size:1.1em;"></div>
 <div style="position:fixed;top:16px;right:24px;z-index:1000;">
   <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
     <input type="checkbox" id="dark-mode-toggle" style="transform:scale(1.2);"> Dark Mode
@@ -56,6 +57,20 @@ body { background: #fff; font-family: Arial, sans-serif; margin: 0; padding: 0; 
   </div>
   <script src="signin.js"></script>
   <script>
+// Role icon logic
+function getRoleIcon(role) {
+  if (role === 'administrator') return '🛡️';
+  return '🎓';
+}
+function showRoleIndicator() {
+  let username = localStorage.getItem('username') || 'user';
+  let role = 'student';
+  if (username === 'dev') role = 'administrator';
+  if (username === 'Christopher Harston') role = 'student';
+  const indicator = document.getElementById('role-indicator');
+  if (indicator) indicator.innerHTML = getRoleIcon(role) + ' ' + role.charAt(0).toUpperCase() + role.slice(1);
+}
+showRoleIndicator();
 // Dark mode logic
 function applyDarkMode() {
   const enabled = localStorage.getItem('darkMode') === 'true';
